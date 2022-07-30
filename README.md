@@ -1,7 +1,7 @@
-**Mini serial console * Mini serial console with LCD and some buttons**  
+**Mini serial console with 20x4 LCD and some buttons**  
 Copyright (C) 2022 Pozsár Zsolt <pozsar.zsolt@szerafingomba.hu>  
-Homepage: <http://www.szerafingomba.hu/softwares/>  
-GitHub: <https://github.com/pozsarzs/mini-serial-console-sw>
+Homepage: <http://www.pozsarzs.hu>  
+GitHub: <https://github.com/pozsarzs/mini_serial_console-sw>
 
 **Software**
 
