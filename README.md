@@ -1,5 +1,5 @@
-**Mini serial console with 20x4 LCD and some buttons**  
-Copyright (C) 2022 Pozsár Zsolt <pozsar.zsolt@szerafingomba.hu>  
+**Mini serial console with 20x4 LCD, six buttons and dual serial port (TTL/RS232C)**  
+Copyright (C) 2022 Pozsár Zsolt <pozsarzs@gmail.com>  
 Homepage: <http://www.pozsarzs.hu>  
 GitHub: <https://github.com/pozsarzs/mini_serial_console-sw>
 
@@ -10,4 +10,4 @@ GitHub: <https://github.com/pozsarzs/mini_serial_console-sw>
  - version:            v0.1
  - language:           en
  - licence:            EUPL v1.1
- - remote access:      RS-232C and TTL serial port
+ - remote access:      serial port
