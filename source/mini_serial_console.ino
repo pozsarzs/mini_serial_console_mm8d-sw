@@ -1,7 +1,7 @@
 // +---------------------------------------------------------------------------+
 // | Mini serial console * v0.1                                                |
 // | Copyright (C) 2022 Pozsár Zsolt <pozsarzs@gmail.com>                      |
-// | mini_serial_console.cpp                                                   |
+// | mini_serial_console.ino                                                   |
 // | Program for Raspberry Pi Pico                                             |
 // +---------------------------------------------------------------------------+
 
@@ -13,9 +13,9 @@
 // FOR A PARTICULAR PURPOSE.
 
 // settings
-const int     spd_serialUSB     = 115200;  // speed of the USB serial port
-const int     spd_serial0       = 38400;   // speed of the TTL serial port
-const int     spd_serial1       = 38400;   // speed of the RS232C serial port
+const int     spd_serial0       = 115200;  // speed of the USB serial port
+const int     spd_serial1       = 38400;   // speed of the TTL serial port
+const int     spd_serial2       = 38400;   // speed of the RS232C serial port
 // GPIO ports
 const int     lcd_bl            = 14;      // LCD - backlight on/off
 const int     lcd_db0           = 2;       // LCD - databit 0
@@ -36,10 +36,9 @@ const int     prt_pb2           = 19;      // pushbutton 2
 const int     prt_pb3           = 20;      // pushbutton 3
 const int     prt_pb4           = 21;      // pushbutton 4
 const int     prt_pb5           = 22;      // pushbutton 5
-const int     prt_rxd0          = 1;       // RXD line of the serial port 0
-const int     prt_txd0          = 0;       // TXD line of the serial port 0
-const int     prt_rxd1          = 9;       // RXD line of the serial port 1
-const int     prt_txd1          = 8;       // TXD line of the serial port 1
+const int     prt_rxd2          = 9;       // RXD line of the serial port 2
+const int     prt_txd2          = 8;       // TXD line of the serial port 2
+const int     prt_led           = LED_BUILTIN;
 // general constants
 const String  swversion         = "0.1";   // version of this program
 // general variables
@@ -49,11 +48,11 @@ String msg[40]                  =
 {
   /*  0 */  "",
   /*  1 */  "Mini serial console",
-  /*  2 */  "with two serial port",
-  /*  3 */  "Software: v",
-  /*  4 */  "(C)2022 Pozsar Zsolt",
-  /*  5 */  "Initializing...",
-  /*  6 */  "",
+  /*  2 */  "Software: v",
+  /*  3 */  "(C)2022 Pozsar Zsolt",
+  /*  4 */  "Initializing...",
+  /*  5 */  " * Set speed of other serial ports: ",
+  /*  6 */  " * Set GPIO ports",
   /*  7 */  "",
   /*  8 */  "",
   /*  9 */  "",
@@ -89,29 +88,71 @@ String msg[40]                  =
   /* 39 */  "",
 };
 
+UART Serial2(prt_txd2, prt_rxd2, 0, 0);
 
-UART Serial1(prt_txd0,prt_rxd0,0,0);
-UART Serial2(prt_txd1,prt_rxd1,0,0);
-
+// initializing
 void setup() {
   // set USB serial port
-  Serial.begin(spd_serialUSB);
+  Serial.begin(spd_serial0);
   // write program information
   Serial.println("");
   Serial.println("");
-  Serial.println(msg[1] + ' ' + msg[2]);
-  Serial.println(msg[3] + swversion );
+  Serial.println(msg[1]);
+  Serial.println(msg[2] + swversion);
+  Serial.println(msg[3]);
   Serial.println(msg[4]);
-  Serial.println(msg[5]);
   // set other serial ports
-  Serial1.begin(spd_serial0);
+  Serial.println(msg[5] + String((int)spd_serial1) + "b/s - " + String((int)spd_serial2) + "b/s");
   Serial2.begin(spd_serial1);
-
-
+  Serial2.begin(spd_serial2);
+  // set GPIO ports
+  Serial.println(msg[6]);
+  pinMode(lcd_bl, OUTPUT);
+  pinMode(lcd_db0, OUTPUT);
+  pinMode(lcd_db1, OUTPUT);
+  pinMode(lcd_db2, OUTPUT);
+  pinMode(lcd_db3, OUTPUT);
+  pinMode(lcd_db4, OUTPUT);
+  pinMode(lcd_db5, OUTPUT);
+  pinMode(lcd_db6, OUTPUT);
+  pinMode(lcd_db7, OUTPUT);
+  pinMode(lcd_en, OUTPUT);
+  pinMode(lcd_rs, OUTPUT);
+  pinMode(prt_jp2, INPUT);
+  pinMode(prt_jp3, INPUT);
+  pinMode(prt_led, OUTPUT);
+  pinMode(prt_pb0, INPUT);
+  pinMode(prt_pb1, INPUT);
+  pinMode(prt_pb2, INPUT);
+  pinMode(prt_pb3, INPUT);
+  pinMode(prt_pb4, INPUT);
+  pinMode(prt_pb5, INPUT);
 }
 
+// main function
 void loop() {
 
-
 }
 
+// sign serial port activity
+void led(int i) {
+  if (i == 0) {
+    digitalWrite(prt_led, LOW);
+  } else {
+    digitalWrite(prt_led, HIGH);
+  }
+}
+
+// turn on/off background light
+void display_backgroundlight(int i) {
+  if (i == 0) {
+    digitalWrite(lcd_bl, LOW);
+  } else {
+    digitalWrite(lcd_bl, HIGH);
+  }
+}
+
+// write text to display
+void display_writetotext() {
+
+}
