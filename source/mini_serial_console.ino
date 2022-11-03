@@ -18,21 +18,23 @@
 
     Mode #0: read only mode,
              no cursor,
-             20x4 size displayed area on 80x4 size virtual screen,
+             20x4 size displayed area on 80x4* size virtual screen,
              automatically scrolling lines,
              the displayed area can be moved horizontally with pushbuttons.
     Mode #1: read only mode,
              no cursor,
-             20x4 size displayed area on 80x25 size virtual screen,
+             20x4 size displayed area on 80x25* size virtual screen,
              automatically scrolling lines,
              the displayed area can be moved horizontally and vertically with pushbuttons.
     Mode #2: read only mode,
              no cursor,
-             20x4 size displayed area on 80x25 size virtual screen,
+             20x4 size displayed area on 80x25* size virtual screen,
              the displayed area can be moved horizontally and vertically with pushbuttons,
-             after 2000 characters or FormFeed (0x12), a new, clean page starts.
+             after FormFeed (0x12), a new, clean page starts.
     Mode #3: reserved for device depend solutions (menu, read/write mode etc.)
 
+    Note:
+     '*': You can set size of the virtual screen with virtscreenxsize and virtscreenysize constants.
 
    Button functions:
 
@@ -114,41 +116,44 @@
      ACG: CGRAM address
      ADD: DDRAM address (corresponds to cursor address)
      AC: Address counter used for both DD and CGRAM addresses
-      : Not used because the R/-W input is shorted to GND.
+     '*' : Not used because the R/-W input is shorted to GND.
 */
 
 # define TEST
 
 // settings
 const int     spd_serial[3]     = {38400, 9600, 9600}; // speed of the USB serial port
+const byte    virtscreenxsize   = 80;                  // horizontal size of virtual screen
+const byte    virtscreenysize   = 25;                  // vertical size of virtual screen
 // GPIO ports
-const byte    lcd_bl            = 14;                 // LCD - backlight on/off
-const byte    lcd_db0           = 2;                  // LCD - databit 0
-const byte    lcd_db1           = 3;                  // LCD - databit 1
-const byte    lcd_db2           = 4;                  // LCD - databit 2
-const byte    lcd_db3           = 5;                  // LCD - databit 3
-const byte    lcd_db4           = 10;                 // LCD - databit 4
-const byte    lcd_db5           = 11;                 // LCD - databit 5
-const byte    lcd_db6           = 12;                 // LCD - databit 6
-const byte    lcd_db7           = 13;                 // LCD - databit 7
-const byte    lcd_en            = 7;                  // LCD - enable
-const byte    lcd_rs            = 6;                  // LCD - register select
-const byte    prt_jp2           = 16;                 // operation mode (JP2 jumper)
-const byte    prt_jp3           = 15;                 // operation mode (JP3 jumper)
-const byte    prt_pb0           = 17;                 // pushbutton 0
-const byte    prt_pb1           = 18;                 // pushbutton 1
-const byte    prt_pb2           = 19;                 // pushbutton 2
-const byte    prt_pb3           = 20;                 // pushbutton 3
-const byte    prt_pb4           = 21;                 // pushbutton 4
-const byte    prt_pb5           = 22;                 // pushbutton 5
-const byte    prt_rxd2          = 9;                  // RXD line of the serial port 2
-const byte    prt_txd2          = 8;                  // TXD line of the serial port 2
-const byte    prt_led           = LED_BUILTIN;        // LED on the board of Pico
+const byte    lcd_bl            = 14;                  // LCD - backlight on/off
+const byte    lcd_db0           = 2;                   // LCD - databit 0
+const byte    lcd_db1           = 3;                   // LCD - databit 1
+const byte    lcd_db2           = 4;                   // LCD - databit 2
+const byte    lcd_db3           = 5;                   // LCD - databit 3
+const byte    lcd_db4           = 10;                  // LCD - databit 4
+const byte    lcd_db5           = 11;                  // LCD - databit 5
+const byte    lcd_db6           = 12;                  // LCD - databit 6
+const byte    lcd_db7           = 13;                  // LCD - databit 7
+const byte    lcd_en            = 7;                   // LCD - enable
+const byte    lcd_rs            = 6;                   // LCD - register select
+const byte    prt_jp2           = 16;                  // operation mode (JP2 jumper)
+const byte    prt_jp3           = 15;                  // operation mode (JP3 jumper)
+const byte    prt_pb0           = 17;                  // pushbutton 0
+const byte    prt_pb1           = 18;                  // pushbutton 1
+const byte    prt_pb2           = 19;                  // pushbutton 2
+const byte    prt_pb3           = 20;                  // pushbutton 3
+const byte    prt_pb4           = 21;                  // pushbutton 4
+const byte    prt_pb5           = 22;                  // pushbutton 5
+const byte    prt_rxd2          = 9;                   // RXD line of the serial port 2
+const byte    prt_txd2          = 8;                   // TXD line of the serial port 2
+const byte    prt_led           = LED_BUILTIN;         // LED on the board of Pico
 // general constants
-const String  swversion         = "0.1";              // version of this program
+const String  swversion         = "0.1";               // version of this program
 // general variables
-byte virtscr[80][25];                                 // virtual screen
-byte mode                       = 0;                  // operation mode of device
+byte virtscreen[virtscreenxsize][virtscreenysize];     // virtual screen
+byte virtscreenypos             = 0;                   // y pos. for copy data (rxdbuffer->virtscreen)
+byte mode                       = 0;                   // operation mode of device
 // messages
 String msg[20]                  =
 {
@@ -161,10 +166,10 @@ String msg[20]                  =
   /*  6 */  " * LCD",
   /*  7 */  " * Speed of ports:",
   /*  8 */  " * Operation mode: #",
-  /*  9 */  "Read data from serial port #",
+  /*  9 */  "Read a line from serial port #",
   /* 10 */  " * I read ",
-  /* 11 */  "Button pressing detected: PB",
-  /* 12 */  "",
+  /* 11 */  " * Line too long, cut to ",
+  /* 12 */  " * Copy line to this y position of the virtual screen: ",
   /* 13 */  "",
   /* 14 */  "",
   /* 15 */  "",
@@ -309,18 +314,33 @@ void lcd_init() {
 
 // * * * OTHER FUNCTIONS * * *
 
+// scroll up one line on virtual screen
+void scrollup(byte ll) {
+  for (byte y = 1; y < (ll + 1); y++) {
+    for (byte x = 0; x < virtscreenxsize - 1; x++) {
+      if (y < (ll + 1)) {
+        virtscreen[x][y] = virtscreen[x][y - 1];
+      }
+      else {
+        virtscreen[x][y - 1] = 20;
+      }
+    }
+  }
+}
+
 // read communication port and move data to virtscr
 byte com_handler(byte p) {
   const byte rxdbuffersize = 255;
   char rxdbuffer[rxdbuffersize];
   int rxdlength = 0;
+  byte lastline;
   switch (p) {
     case 1:
       if (Serial1.available()) {
         Serial.println(msg[9] + String((byte)p));
         digitalWrite(prt_led, HIGH);
         rxdlength = Serial1.readBytes(rxdbuffer, rxdbuffersize);
-        Serial.print(msg[10] + String((byte)rxdlength) + "byte(s).");
+        Serial.print(msg[10] + String((byte)rxdlength) + "character(s).");
       }
       break;
     case 2:
@@ -328,12 +348,54 @@ byte com_handler(byte p) {
         Serial.println(msg[9] + String((byte)p));
         digitalWrite(prt_led, HIGH);
         rxdlength = Serial2.readBytes(rxdbuffer, rxdbuffersize);
-        Serial.print(msg[10] + String((byte)rxdlength) + "byte(s).");
+        Serial.print(msg[10] + String((byte)rxdlength) + "character(s).");
       }
       break;
     default:
       digitalWrite(prt_led, LOW);
       break;
+  }
+  if (rxdlength > virtscreenxsize) {
+    rxdlength = virtscreenxsize;
+    Serial.print(msg[11] + String((byte)virtscreenxsize) + "characters.");
+  }
+  if (rxdlength) {
+    switch (mode) {
+      case 0:
+        lastline = 3;
+        if (virtscreenypos == lastline + 1) {
+          scrollup(lastline);
+        }
+        Serial.print(msg[12] + String((byte)virtscreenypos));
+        for (byte b = 0; b < rxdlength; b++) {
+          virtscreen[b][virtscreenypos] = rxdbuffer[b];
+        }
+        if (virtscreenypos <= lastline) {
+          virtscreenypos++;
+        } else {
+          virtscreenypos = lastline + 1;
+        }
+        break;
+      case 1:
+        lastline = 24;
+        if (virtscreenypos == lastline + 1) {
+          scrollup(lastline);
+        }
+        Serial.print(msg[12] + String((byte)virtscreenypos));
+        for (byte b = 0; b < rxdlength; b++) {
+          virtscreen[b][virtscreenypos] = rxdbuffer[b];
+        }
+        if (virtscreenypos <= lastline) {
+          virtscreenypos++;
+        } else {
+          virtscreenypos = lastline + 1;
+        }
+        break;
+      case 2:
+        break;
+      case 3:
+        break;
+    }
   }
   return rxdlength;
 }
@@ -387,7 +449,7 @@ void display_copyfrombuffer(byte x, byte y) {
   display_gotoxy(0, 0);
   for (byte dy = 0; dy < 3; dy++) {
     for (byte dx = 0; dx < 19; dx++) {
-      lcd_writecharacter(virtscr[x + dx][y + dy]);
+      lcd_writecharacter(virtscreen[x + dx][y + dy]);
     }
   }
 }
@@ -456,6 +518,12 @@ void setup() {
   pinMode(prt_pb3, INPUT);
   pinMode(prt_pb4, INPUT);
   pinMode(prt_pb5, INPUT);
+  // clear virtual screen
+  for (byte x = 0; x < 79; x++) {
+    for (byte y = 0; y < 25; y++) {
+      virtscreen[x][y] = 20;
+    }
+  }
   // set LCD
   Serial.println(msg[6]);
   lcd_init();
