@@ -36,6 +36,7 @@
     Note:
      '*': You can set size of the virtual screen with virtscreenxsize and virtscreenysize constants.
 
+
    Button functions:
 
     Button  Mode #0    Mode #1    Mode #2    Mode #3
@@ -90,36 +91,34 @@
     (Read data from CG or DDRAM 1   1                                 )*
 
     Notes:
-     B = 0: Blinking off
-     B = 1: Blinking on
+     B = 0:   Blinking off
+     B = 1:   Blinking on
      BF = 0:  Instructions acceptable
-     BF = 1: Internally operating
-     C = 0: Cursor off
-     C = 1: Cursor on
-     D = 0: Display off
-     D = 1: Display on
-     DL = 0: 4 bits
-     DL = 1: 8 bits
-     F = 0: 5 × 8 dots font size
-     F = 1: 5 × 10 dots font size
+     BF = 1:  Internally operating
+     C = 0:   Cursor off
+     C = 1:   Cursor on
+     D = 0:   Display off
+     D = 1:   Display on
+     DL = 0:  4 bits
+     DL = 1:  8 bits
+     F = 0:   5 × 8 dots font size
+     F = 1:   5 × 10 dots font size
      I/D = 0: Decrement address counter
      I/D = 1: Increment address counter
-     N = 0: 1 line
-     N = 1: 2 lines
+     N = 0:   1 line
+     N = 1:   2 lines
      R/L = 0: Shift to the left
      R/L = 1: Shift to the right
-     S = 1: Accompanies display shift
+     S = 1:   Accompanies display shift
      S/C = 0: Cursor move
-     S/C = 1:  Display shift
-     DDRAM: Display data RAM
-     CGRAM: Character generator RAM
-     ACG: CGRAM address
-     ADD: DDRAM address (corresponds to cursor address)
-     AC: Address counter used for both DD and CGRAM addresses
-     '*' : Not used because the R/-W input is shorted to GND.
+     S/C = 1: Display shift
+     DDRAM:   Display data RAM
+     CGRAM:   Character generator RAM
+     ACG:     CGRAM address
+     ADD:     DDRAM address (corresponds to cursor address)
+     AC:      Address counter used for both DD and CGRAM addresses
+     '*':     Not used because the R/-W input is shorted to GND.
 */
-
-# define TEST
 
 // settings
 const int     spd_serial[3]     = {38400, 9600, 9600}; // speed of the USB serial port
@@ -150,12 +149,15 @@ const byte    prt_txd2          = 8;                   // TXD line of the serial
 const byte    prt_led           = LED_BUILTIN;         // LED on the board of Pico
 // general constants
 const String  swversion         = "0.1";               // version of this program
+const int     interval          = 60000;               // LCD backlight off time after last button press
 // general variables
 byte virtscreen[virtscreenxsize][virtscreenysize];     // virtual screen
 byte virtscreenypos             = 0;                   // y pos. for copy data (rxdbuffer->virtscreen)
-byte mode                       = 0;                   // operation mode of device
+byte mode                       = 0;                   // operation mode of deviceö
+unsigned long currtime;
+unsigned long prevtime          = 0;
 // messages
-String msg[20]                  =
+String msg[14]                  =
 {
   /*  0 */  "",
   /*  1 */  "Mini serial console",
@@ -170,13 +172,7 @@ String msg[20]                  =
   /* 10 */  " * I read ",
   /* 11 */  " * Line too long, cut to ",
   /* 12 */  " * Copy line to this y position of the virtual screen: ",
-  /* 13 */  "",
-  /* 14 */  "",
-  /* 15 */  "",
-  /* 16 */  "",
-  /* 17 */  "",
-  /* 18 */  "",
-  /* 19 */  ""
+  /* 13 */  "Button pressed: PB"
 };
 
 UART Serial2(prt_txd2, prt_rxd2, 0, 0);
@@ -328,7 +324,7 @@ void scrollup(byte ll) {
   }
 }
 
-// read communication port and move data to virtscr
+// read communication port and move data to virtual screen
 byte com_handler(byte p) {
   const byte rxdbuffersize = 255;
   char rxdbuffer[rxdbuffersize];
@@ -353,6 +349,7 @@ byte com_handler(byte p) {
       break;
     default:
       digitalWrite(prt_led, LOW);
+      prevtime = millis();
       break;
   }
   if (rxdlength > virtscreenxsize) {
@@ -392,8 +389,26 @@ byte com_handler(byte p) {
         }
         break;
       case 2:
+        lastline = 24;
+        if (virtscreenypos == lastline + 1) {
+          virtscreenypos = 0;
+        }
+        Serial.print(msg[12] + String((byte)virtscreenypos));
+        for (byte b = 0; b < rxdlength; b++) {
+          if (rxdbuffer[b] == 0x12) {
+            virtscreenypos = 0;
+          } else {
+            virtscreen[b][virtscreenypos] = rxdbuffer[b];
+          }
+        }
+        if (virtscreenypos <= lastline) {
+          virtscreenypos++;
+        } else {
+          virtscreenypos = lastline + 1;
+        }
         break;
       case 3:
+        // reserved for device depend solutions
         break;
     }
   }
@@ -406,13 +421,15 @@ void btn_handler(byte m) {
   byte y = 0;
   // horizontal move
   if (digitalRead(prt_pb0)) {
-    Serial.println(msg[11] + "0");
+    Serial.println(msg[13] + "0");
+    prevtime = millis();
     if (x > 0) {
       x--;
     }
   }
   if (digitalRead(prt_pb1)) {
-    Serial.println(msg[11] + "1");
+    Serial.println(msg[13] + "1");
+    prevtime = millis();
     if (x + 20 < 79) {
       x++;
     }
@@ -420,13 +437,15 @@ void btn_handler(byte m) {
   if (m > 0) {
     // vertical move
     if (digitalRead(prt_pb2)) {
-      Serial.println(msg[11] + "2");
+      Serial.println(msg[13] + "2");
+      prevtime = millis();
       if (y > 0) {
         y--;
       }
     }
     if (digitalRead(prt_pb3)) {
-      Serial.println(msg[11] + "3");
+      Serial.println(msg[13] + "3");
+      prevtime = millis();
       if (y + 4 < 24) {
         y++;
       }
@@ -435,18 +454,22 @@ void btn_handler(byte m) {
   if (m > 2) {
     // data input
     if (digitalRead(prt_pb4)) {
-      Serial.println(msg[11] + "4");
+      Serial.println(msg[13] + "4");
+      prevtime = millis();
+      // reserved for device depend solutions
     }
     if (digitalRead(prt_pb5)) {
-      Serial.println(msg[11] + "5");
+      Serial.println(msg[13] + "5");
+      prevtime = millis();
+      // reserved for device depend solutions
     }
   }
-  display_copyfrombuffer(x, y);
+  dsp_cpvirtscreen2lcd(x, y);
 }
 
-// copy text from buffer to display
-void display_copyfrombuffer(byte x, byte y) {
-  display_gotoxy(0, 0);
+// // copy text from virtual screen to LCD
+void dsp_cpvirtscreen2lcd(byte x, byte y) {
+  dsp_gotoxy(0, 0);
   for (byte dy = 0; dy < 3; dy++) {
     for (byte dx = 0; dx < 19; dx++) {
       lcd_writecharacter(virtscreen[x + dx][y + dy]);
@@ -455,7 +478,7 @@ void display_copyfrombuffer(byte x, byte y) {
 }
 
 // set start position to write string
-void display_gotoxy(byte dx, byte dy) {
+void dsp_gotoxy(byte dx, byte dy) {
   byte addr;
   switch (dy)
   {
@@ -469,7 +492,7 @@ void display_gotoxy(byte dx, byte dy) {
 }
 
 // write string to display
-void display_write(String s) {
+void dsp_write(String s) {
   for (byte b = 0; b < s.length(); b++)
   {
     lcd_writecharacter(s[b]);
@@ -478,7 +501,7 @@ void display_write(String s) {
 
 // get operation mode of device
 byte getmode() {
-  return (digitalRead(prt_jp3) * 2 + digitalRead(prt_jp3));
+  return (digitalRead(prt_jp3) * 2 + digitalRead(prt_jp2));
 }
 
 // * * * MAIN FUNCTIONS * * *
@@ -531,13 +554,14 @@ void setup() {
   lcd_functionset(1, 1, 0);          // function set: 8-bit mode, 2-line display and 5 × 8 dot character font
   lcd_displayonoffcontrol(1, 0, 0);  // display on/off control: display on, cursor and blinking off
   lcd_entrymode(1, 0);               // entry mode set: increment cursor, no shift
+  lcd_backlight(1);
   // write program information to display
   for (int b = 0; b < 3; b++) {
-    display_gotoxy(0, b);
+    dsp_gotoxy(0, b);
     if (b == 1) {
-      display_write(msg[b + 1] + swversion);
+      dsp_write(msg[b + 1] + swversion);
     } else {
-      display_write(msg[b + 1]);
+      dsp_write(msg[b + 1]);
     }
   }
   delay(3000);
@@ -548,37 +572,47 @@ void setup() {
   for (int b = 0; b < 3; b++) {
     s = "#" + String((byte)b) + ": " + String((int)spd_serial[b]) + " b/s";
     Serial.println("   " + s);
-    display_gotoxy(0, b);
-    display_write(s);
+    dsp_gotoxy(0, b);
+    dsp_write(s);
   }
   // get operation mode
-  mode = digitalRead(prt_jp3) * 2 + digitalRead(prt_jp3);
+  mode = getmode();
   s = msg[8] + String((byte)mode);
   Serial.println(s);
-  display_gotoxy(0, 3);
-  display_write(s);
+  dsp_gotoxy(0, 3);
+  dsp_write(s);
   delay(3000);
+  lcd_clear();
 }
 
 // main function
 void loop() {
   String s;
+  // detect LCD backlight off time
+  currtime = millis();
+  if (currtime - prevtime >= interval)
+  {
+    lcd_backlight(0);
+  } else
+  {
+    lcd_backlight(1);
+  }
   // get operation mode
   if (getmode() != mode) {
     mode = getmode();
-    Serial.println(msg[8] + String((byte)mode));
     s = msg[8] + String((byte)mode);
     Serial.println(s);
     lcd_clear();
-    display_gotoxy(0, 2);
-    display_write(s);
+    dsp_gotoxy(0, 2);
+    dsp_write(s);
     delay(3000);
     lcd_clear();
   }
   // handling serial ports
   com_handler(1);
   com_handler(2);
-  // handling buttons and display
-  //  display_copyfrombuffer(0, 0);
-  //  btn_handler(mode);
+  // copy text from virtual screen to LCD
+  dsp_cpvirtscreen2lcd(0, 0);
+  // handling buttons
+  btn_handler(mode);
 }
