@@ -56,9 +56,9 @@
     Serial2: UART1  second input  RS232C
 */
 
-// #define LCD_8BIT
+#define LCD_8BIT
 #define COM_TTL
-// #define COM_RS232C
+#define COM_RS232C
 // #define TEST
 
 #include <LiquidCrystal.h>
@@ -192,7 +192,7 @@ byte com_handler(byte p) {
     rxdlength = virtscreenxsize;
     Serial.print(msg[11] + String(virtscreenxsize) + " characters.");
   }
-  // copy line from receiverbuffer to virtual screen
+  // copy line from receive buffer to virtual screen
   if (rxdlength) {
     switch (operationmode) {
       case 0:
