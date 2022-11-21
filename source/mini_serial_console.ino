@@ -121,10 +121,7 @@ String msg[14]                  =
   /*  7 */  " * Serial ports:",
   /*  8 */  "Operation mode: #",
   /*  9 */  "Read a line from serial port #",
-  /* 10 */  " * I read ",
-  /* 11 */  " * Line too long, cut to ",
-  /* 12 */  " * Copy line to this y position of the virtual screen: ",
-  /* 13 */  "Button pressed: PB"
+  /* 10 */  "Button pressed: PB"
 };
 
 #ifdef ARDUINO_ARCH_MBED_RP2040
@@ -168,20 +165,18 @@ byte com_handler(byte p) {
   switch (p) {
     case 1:
       if (Serial1.available()) {
-        Serial.println(msg[9] + String(p));
         digitalWrite(prt_led, HIGH);
         rxdlength = Serial1.readBytes(rxdbuffer, rxdbuffersize);
-        Serial.print(msg[10] + String(rxdlength) + " character(s).");
+        Serial.println(msg[9] + String(p));
         digitalWrite(prt_led, LOW);
         previoustime = millis();
       }
       break;
     case 2:
       if (Serial2.available()) {
-        Serial.println(msg[9] + String(p));
         digitalWrite(prt_led, HIGH);
         rxdlength = Serial2.readBytes(rxdbuffer, rxdbuffersize);
-        Serial.print(msg[10] + String(rxdlength) + " character(s).");
+        Serial.println(msg[9] + String(p));
         digitalWrite(prt_led, LOW);
         previoustime = millis();
       }
@@ -190,7 +185,6 @@ byte com_handler(byte p) {
   // check datalenght
   if (rxdlength > virtscreenxsize) {
     rxdlength = virtscreenxsize;
-    Serial.print(msg[11] + String(virtscreenxsize) + " characters.");
   }
   // copy line from receive buffer to virtual screen
   if (rxdlength) {
@@ -256,7 +250,7 @@ byte com_handler(byte p) {
 void btn_handler(byte m) {
   // horizontal move
   if (not digitalRead(prt_pb0)) {
-    Serial.println(msg[12] + "0");
+    Serial.println(msg[10] + "0");
     delay(btn_delay);
     previoustime = millis();
     if (virtscreenxpos > 0) {
@@ -265,7 +259,7 @@ void btn_handler(byte m) {
     }
   }
   if (not digitalRead(prt_pb1)) {
-    Serial.println(msg[12] + "1");
+    Serial.println(msg[10] + "1");
     delay(btn_delay);
     previoustime = millis();
     if (virtscreenxpos + displayxsize < virtscreenxsize) {
@@ -276,7 +270,7 @@ void btn_handler(byte m) {
   // vertical move
   if (m > 0) {
     if (not digitalRead(prt_pb2)) {
-      Serial.println(msg[12] + "2");
+      Serial.println(msg[10] + "2");
       delay(btn_delay);
       previoustime = millis();
       if (virtscreenypos > 0) {
@@ -285,7 +279,7 @@ void btn_handler(byte m) {
       }
     }
     if (not digitalRead(prt_pb3)) {
-      Serial.println(msg[12] + "3");
+      Serial.println(msg[10] + "3");
       delay(btn_delay);
       previoustime = millis();
       if (virtscreenypos + displayysize < virtscreenysize) {
@@ -297,13 +291,13 @@ void btn_handler(byte m) {
   // data input
   if (m == 3) {
     if (not digitalRead(prt_pb4)) {
-      Serial.println(msg[12] + "4");
+      Serial.println(msg[10] + "4");
       delay(btn_delay);
       previoustime = millis();
       // reserved for device depend solutions
     }
     if (not digitalRead(prt_pb5)) {
-      Serial.println(msg[12] + "5");
+      Serial.println(msg[10] + "5");
       delay(btn_delay);
       previoustime = millis();
       // reserved for device depend solutions
