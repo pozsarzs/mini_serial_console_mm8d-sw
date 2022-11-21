@@ -56,8 +56,10 @@
     Serial2: UART1  second input  RS232C
 */
 
-#define lcd_4bitmode
-#define TEST
+// #define LCD_8BIT
+#define COM_TTL
+// #define COM_RS232C
+// #define TEST
 
 #include <LiquidCrystal.h>
 
@@ -128,10 +130,11 @@ String msg[14]                  =
 #ifdef ARDUINO_ARCH_MBED_RP2040
 UART Serial2(com_rxd2, com_txd, NC, NC);
 #endif
-#ifdef lcd_4bitmode
-LiquidCrystal lcd(lcd_rs, lcd_en, lcd_db4, lcd_db5, lcd_db6, lcd_db7);
-#else
+
+#ifdef LCD_8BIT
 LiquidCrystal lcd(lcd_rs, lcd_en, lcd_db0, lcd_db1, lcd_db2, lcd_db3, lcd_db4, lcd_db5, lcd_db6, lcd_db7);
+#else
+LiquidCrystal lcd(lcd_rs, lcd_en, lcd_db4, lcd_db5, lcd_db6, lcd_db7);
 #endif
 
 // LCD - turn on/off background light
@@ -144,14 +147,12 @@ void lcd_backlight(byte bl) {
 }
 
 // scroll up one line on virtual screen
-void scrollup(byte ll) {
-  for (byte y = 1; y < (ll + 1); y++) {
-    for (byte x = 0; x < virtscreenxsize - 1; x++) {
-      if (y < (ll + 1)) {
-        virtscreen[x][y] = virtscreen[x][y - 1];
-      }
-      else {
-        virtscreen[x][y - 1] = 20;
+void scroll(byte ll) {
+  for (byte y = 1; y <= ll; y++) {
+    for (byte x = 0; x <= virtscreenxsize - 1; x++) {
+      virtscreen[x][y - 1] = virtscreen[x][y];
+      if (y == ll) {
+        virtscreen[x][y] = 32;
       }
     }
   }
@@ -163,6 +164,7 @@ byte com_handler(byte p) {
   char rxdbuffer[rxdbuffersize];
   int rxdlength = 0;
   byte lastline;
+  // read port and write to receive buffer
   switch (p) {
     case 1:
       if (Serial1.available()) {
@@ -176,56 +178,59 @@ byte com_handler(byte p) {
       break;
     case 2:
       if (Serial2.available()) {
-        Serial.println(msg[9] + String((byte)p));
+        Serial.println(msg[9] + String(p));
         digitalWrite(prt_led, HIGH);
         rxdlength = Serial2.readBytes(rxdbuffer, rxdbuffersize);
-        Serial.print(msg[10] + String((byte)rxdlength) + " character(s).");
+        Serial.print(msg[10] + String(rxdlength) + " character(s).");
         digitalWrite(prt_led, LOW);
         previoustime = millis();
       }
       break;
   }
+  // check datalenght
   if (rxdlength > virtscreenxsize) {
     rxdlength = virtscreenxsize;
-    Serial.print(msg[11] + String((byte)virtscreenxsize) + " characters.");
+    Serial.print(msg[11] + String(virtscreenxsize) + " characters.");
   }
+  // copy line from receiverbuffer to virtual screen
   if (rxdlength) {
     switch (operationmode) {
       case 0:
         lastline = 3;
-        if (virtscreenypos == lastline + 1) {
-          scrollup(lastline);
+        if (virtscreenline == lastline + 1) {
+          scroll(lastline);
+          virtscreenline = lastline;
         }
-        Serial.print(msg[12] + String(virtscreenypos));
         for (byte b = 0; b < rxdlength; b++) {
-          virtscreen[b][virtscreenypos] = rxdbuffer[b];
+          if (rxdbuffer[b] >= 32) {
+            virtscreen[b][virtscreenline] = rxdbuffer[b];
+          }
         }
-        if (virtscreenypos < lastline + 1) {
-          virtscreenypos++;
-        }
-        copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
+        virtscreenline++;
+        copyvirtscreen2lcd(virtscreenxpos, 0);
         break;
       case 1:
         lastline = 24;
-        if (virtscreenypos == lastline + 1) {
-          scrollup(lastline);
+        if (virtscreenline == lastline + 1) {
+          scroll(lastline);
+          virtscreenline = lastline;
         }
-        Serial.print(msg[12] + String((byte)virtscreenypos));
         for (byte b = 0; b < rxdlength; b++) {
-          virtscreen[b][virtscreenypos] = rxdbuffer[b];
+          if (rxdbuffer[b] >= 32) {
+            virtscreen[b][virtscreenline] = rxdbuffer[b];
+          }
         }
-        if (virtscreenypos <= lastline) {
-          virtscreenypos++;
-        } else {
-          virtscreenypos = lastline + 1;
-        }
+        virtscreenline++;
+        copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
         break;
+
+
       case 2:
+        // ez még nem tesztelt
         lastline = 24;
         if (virtscreenypos == lastline + 1) {
           virtscreenypos = 0;
         }
-        Serial.print(msg[12] + String((byte)virtscreenypos));
         for (byte b = 0; b < rxdlength; b++) {
           if (rxdbuffer[b] == 0x12) {
             virtscreenypos = 0;
@@ -251,7 +256,7 @@ byte com_handler(byte p) {
 void btn_handler(byte m) {
   // horizontal move
   if (not digitalRead(prt_pb0)) {
-    Serial.println(msg[13] + "0");
+    Serial.println(msg[12] + "0");
     delay(btn_delay);
     previoustime = millis();
     if (virtscreenxpos > 0) {
@@ -260,7 +265,7 @@ void btn_handler(byte m) {
     }
   }
   if (not digitalRead(prt_pb1)) {
-    Serial.println(msg[13] + "1");
+    Serial.println(msg[12] + "1");
     delay(btn_delay);
     previoustime = millis();
     if (virtscreenxpos + displayxsize < virtscreenxsize) {
@@ -271,7 +276,7 @@ void btn_handler(byte m) {
   // vertical move
   if (m > 0) {
     if (not digitalRead(prt_pb2)) {
-      Serial.println(msg[13] + "2");
+      Serial.println(msg[12] + "2");
       delay(btn_delay);
       previoustime = millis();
       if (virtscreenypos > 0) {
@@ -280,7 +285,7 @@ void btn_handler(byte m) {
       }
     }
     if (not digitalRead(prt_pb3)) {
-      Serial.println(msg[13] + "3");
+      Serial.println(msg[12] + "3");
       delay(btn_delay);
       previoustime = millis();
       if (virtscreenypos + displayysize < virtscreenysize) {
@@ -292,13 +297,13 @@ void btn_handler(byte m) {
   // data input
   if (m == 3) {
     if (not digitalRead(prt_pb4)) {
-      Serial.println(msg[13] + "4");
+      Serial.println(msg[12] + "4");
       delay(btn_delay);
       previoustime = millis();
       // reserved for device depend solutions
     }
     if (not digitalRead(prt_pb5)) {
-      Serial.println(msg[13] + "5");
+      Serial.println(msg[12] + "5");
       delay(btn_delay);
       previoustime = millis();
       // reserved for device depend solutions
@@ -412,7 +417,7 @@ void setup() {
 #else
   for (byte y = 0; y <= virtscreenysize - 1; y++) {
     for (byte x = 0; x <= virtscreenxsize - 1; x++) {
-      virtscreen[x][y] = " ";
+      virtscreen[x][y] = 32;
     }
   }
 #endif
@@ -443,8 +448,12 @@ void loop() {
     lcd.clear();
   }
   // handling serial ports
+#ifdef COM_TTL
   com_handler(1);
-  // com_handler(2);
+#endif
+#ifdef COM_RS232C
+  com_handler(2);
+#endif
   // handling buttons
   btn_handler(operationmode);
 }
