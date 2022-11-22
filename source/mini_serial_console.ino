@@ -6,69 +6,73 @@
 // +---------------------------------------------------------------------------+
 
 /*
-      This program is free software: you can redistribute it and/or modify it
-    under the terms of the European Union Public License 1.2 version.
+    This program is free software: you can redistribute it and/or modify it
+  under the terms of the European Union Public License 1.2 version.
 
-      This program is distributed in the hope that it will be useful, but WITHOUT
-    ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-    FOR A PARTICULAR PURPOSE.
+    This program is distributed in the hope that it will be useful, but WITHOUT
+  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+  FOR A PARTICULAR PURPOSE.
 */
 
 /* Operation modes:
 
     Mode #0: read only mode,
              no cursor,
-             20x4 size displayed area on 80x4* size virtual screen,
+             20x4 size displayed area on 80x4 size virtual screen,
              automatically scrolling lines,
              the displayed area can be moved horizontally with pushbuttons.
     Mode #1: read only mode,
              no cursor,
              20x4 size displayed area on 80x25* size virtual screen,
              automatically scrolling lines,
-             the displayed area can be moved horizontally and vertically with pushbuttons.
+             the displayed area can be moved horizontally and vertically with
+             pushbuttons.
     Mode #2: read only mode,
              no cursor,
              20x4 size displayed area on 80x25* size virtual screen,
-             the displayed area can be moved horizontally and vertically with pushbuttons,
+             the displayed area can be moved horizontally and vertically with
+             pushbuttons,
              after FormFeed (0x12), a new, clean page starts.
     Mode #3: reserved for device depend solutions (menu, read/write mode etc.)
 
     Note:
-     '*': You can set size of the virtual screen with virtscreenxsize and virtscreenysize constants.
+     '*': You can set size of the virtual screen with virtscreenxsize and
+          virtscreenysize constants in operation mode #1 and #2.
 
 
    Button functions:
 
-    Button  Mode #0    Mode #1    Mode #2    Mode #3
-    ---------------------------------------------------
-    PB0     move left  move left  move left  move left
-    PB1     move right move right move right move right
-    PB2                move up    move up    move up
-    PB3                move down  move down  move down
-    PB4                                      enter
-    PB5                                      escape
+    Button  Mode #0     Mode #1     Mode #2     Mode #3
+    ------------------------------------------------------
+     PB0    move left   move left   move left   move left
+     PB1    move right  move right  move right  move right
+     PB2                move up     move up     move up
+     PB3                move down   move down   move down
+     PB4                                        enter
+     PB5                                        escape
 
 
    Serial ports:
 
-    Serial0: USB    console
-    Serial1: UART0  first input   3.3V TTL
-    Serial2: UART1  second input  RS232C
+    Serial0: USB    zero input/console output
+    Serial1: UART0  first input/output (3.3V TTL)
+    Serial2: UART1  second input/output (RS232C)
 */
 
-#define LCD_8BIT
-#define COM_TTL
-#define COM_RS232C
-// #define TEST
+#define LCD_8BIT                                            // enable 8 bit mode of the LCD
+// #define COM_USB                                          // enable Serial #0 port as input
+#define COM_TTL                                             // enable Serial #1 port
+#define COM_RS232C                                          // enable Serial #2 port
+// #define TEST                                             // enable test mode of scrolling
 
 #include <LiquidCrystal.h>
 
 // settings
-const byte    displayxsize      = 20;                       // horizontal size of display
-const byte    displayysize      = 4;                        //vertical size of display
+const int     lcd_bloffinterval = 60000;                    // LCD backlight off time after last button press
+const byte    lcd_xsize         = 20;                       // horizontal size of display
+const byte    lcd_ysize         = 4;                        //vertical size of display
 const byte    virtscreenxsize   = 80;                       // horizontal size of virtual screen
 const byte    virtscreenysize   = 25;                       // vertical size of virtual screen
-const int     bloffinterval     = 60000;                    // LCD backlight off time after last button press
 // serial ports
 const int     com_speed[3]      = {115200, 9600, 9600};     // speed of the USB serial port
 #ifdef ARDUINO_ARCH_MBED_RP2040
@@ -135,50 +139,93 @@ LiquidCrystal lcd(lcd_rs, lcd_en, lcd_db4, lcd_db5, lcd_db6, lcd_db7);
 #endif
 
 // LCD - turn on/off background light
-void lcd_backlight(byte bl) {
-  if (bl) {
-    digitalWrite(lcd_bl, HIGH);
-  } else {
-    digitalWrite(lcd_bl, LOW);
+void lcd_backlight(byte opmode) {
+  switch (opmode) {
+    case 0:
+      digitalWrite(lcd_bl, LOW);
+      break;
+    case 1:
+      digitalWrite(lcd_bl, HIGH);
+      break;
+    case 2:
+      previoustime = millis();
+      break;
+    case 3:
+      currenttime = millis();
+      if (currenttime - previoustime >= lcd_bloffinterval) {
+        digitalWrite(lcd_bl, LOW);
+      } else {
+        digitalWrite(lcd_bl, HIGH);
+      }
+      break;
   }
 }
 
 // scroll up one line on virtual screen
-void scroll(byte ll) {
-  for (byte y = 1; y <= ll; y++) {
+void scroll(byte lastline) {
+  for (byte y = 1; y <= lastline; y++) {
     for (byte x = 0; x <= virtscreenxsize - 1; x++) {
       virtscreen[x][y - 1] = virtscreen[x][y];
-      if (y == ll) {
+      if (y == lastline) {
         virtscreen[x][y] = 32;
       }
     }
   }
 }
 
+// copy text from virtual screen to LCD
+void copyvirtscreen2lcd(byte x, byte y) {
+  for (byte dy = 0; dy <= lcd_ysize - 1; dy++) {
+    for (byte dx = 0; dx <= lcd_xsize - 1; dx++) {
+      lcd.setCursor(dx, dy);
+      lcd.write(virtscreen[x + dx][y + dy]);
+    }
+  }
+}
+
+// clear virtual screen
+void clearvirtscreen() {
+  for (byte y = 0; y <= virtscreenysize - 1; y++) {
+    for (byte x = 0; x <= virtscreenxsize - 1; x++) {
+      virtscreen[x][y] = 32;
+    }
+  }
+}
+
 // read communication port and move data to virtual screen
-byte com_handler(byte p) {
-  const byte rxdbuffersize = 255;
-  char rxdbuffer[rxdbuffersize];
-  int rxdlength = 0;
+byte com_handler(byte port) {
+  const byte rxdbuffersize       = 255;
+  boolean newpage                = false;
   byte lastline;
+  char rxdbuffer[rxdbuffersize];
+  int rxdlength                  = 0;
   // read port and write to receive buffer
-  switch (p) {
+  switch (port) {
+    case 0:
+      if (Serial.available()) {
+        digitalWrite(prt_led, HIGH);
+        rxdlength = Serial.readBytes(rxdbuffer, rxdbuffersize);
+        Serial.println(msg[9] + String(port));
+        digitalWrite(prt_led, LOW);
+        lcd_backlight(2);
+      }
+      break;
     case 1:
       if (Serial1.available()) {
         digitalWrite(prt_led, HIGH);
         rxdlength = Serial1.readBytes(rxdbuffer, rxdbuffersize);
-        Serial.println(msg[9] + String(p));
+        Serial.println(msg[9] + String(port));
         digitalWrite(prt_led, LOW);
-        previoustime = millis();
+        lcd_backlight(2);
       }
       break;
     case 2:
       if (Serial2.available()) {
         digitalWrite(prt_led, HIGH);
         rxdlength = Serial2.readBytes(rxdbuffer, rxdbuffersize);
-        Serial.println(msg[9] + String(p));
+        Serial.println(msg[9] + String(port));
         digitalWrite(prt_led, LOW);
-        previoustime = millis();
+        lcd_backlight(2);
       }
       break;
   }
@@ -196,8 +243,9 @@ byte com_handler(byte p) {
           virtscreenline = lastline;
         }
         for (byte b = 0; b < rxdlength; b++) {
-          if (rxdbuffer[b] >= 32) {
+          if ((rxdbuffer[b] >= 32) and (rxdbuffer[b] < 255)) {
             virtscreen[b][virtscreenline] = rxdbuffer[b];
+            Serial.println(byte(rxdbuffer[b]));
           }
         }
         virtscreenline++;
@@ -210,33 +258,35 @@ byte com_handler(byte p) {
           virtscreenline = lastline;
         }
         for (byte b = 0; b < rxdlength; b++) {
-          if (rxdbuffer[b] >= 32) {
+          if ((rxdbuffer[b] >= 32) and (rxdbuffer[b] < 255)) {
             virtscreen[b][virtscreenline] = rxdbuffer[b];
           }
         }
         virtscreenline++;
         copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
         break;
-
-
       case 2:
-        // ez még nem tesztelt
         lastline = 24;
-        if (virtscreenypos == lastline + 1) {
-          virtscreenypos = 0;
+        if (virtscreenline == lastline + 1) {
+          virtscreenline = 0;
         }
         for (byte b = 0; b < rxdlength; b++) {
-          if (rxdbuffer[b] == 0x12) {
-            virtscreenypos = 0;
-          } else {
-            virtscreen[b][virtscreenypos] = rxdbuffer[b];
+          if (((rxdbuffer[b] == 12) or (rxdbuffer[b] >= 32)) and (rxdbuffer[b] < 255)) {
+            if (rxdbuffer[b] == 12) {
+              newpage = true;
+            } else {
+              virtscreen[b][virtscreenline] = rxdbuffer[b];
+            }
           }
         }
-        if (virtscreenypos <= lastline) {
-          virtscreenypos++;
+        if (newpage) {
+          clearvirtscreen();
+          virtscreenline = 0;
+          newpage = false;
         } else {
-          virtscreenypos = lastline + 1;
+          virtscreenline++;
         }
+        copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
         break;
       case 3:
         // reserved for device depend solutions
@@ -252,7 +302,7 @@ void btn_handler(byte m) {
   if (not digitalRead(prt_pb0)) {
     Serial.println(msg[10] + "0");
     delay(btn_delay);
-    previoustime = millis();
+    lcd_backlight(2);
     if (virtscreenxpos > 0) {
       virtscreenxpos--;
       copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
@@ -261,8 +311,8 @@ void btn_handler(byte m) {
   if (not digitalRead(prt_pb1)) {
     Serial.println(msg[10] + "1");
     delay(btn_delay);
-    previoustime = millis();
-    if (virtscreenxpos + displayxsize < virtscreenxsize) {
+    lcd_backlight(2);
+    if (virtscreenxpos + lcd_xsize < virtscreenxsize) {
       virtscreenxpos++;
       copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
     }
@@ -272,7 +322,7 @@ void btn_handler(byte m) {
     if (not digitalRead(prt_pb2)) {
       Serial.println(msg[10] + "2");
       delay(btn_delay);
-      previoustime = millis();
+      lcd_backlight(2);
       if (virtscreenypos > 0) {
         virtscreenypos--;
         copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
@@ -281,8 +331,8 @@ void btn_handler(byte m) {
     if (not digitalRead(prt_pb3)) {
       Serial.println(msg[10] + "3");
       delay(btn_delay);
-      previoustime = millis();
-      if (virtscreenypos + displayysize < virtscreenysize) {
+      lcd_backlight(2);
+      if (virtscreenypos + lcd_ysize < virtscreenysize) {
         virtscreenypos++;
         copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
       }
@@ -293,24 +343,14 @@ void btn_handler(byte m) {
     if (not digitalRead(prt_pb4)) {
       Serial.println(msg[10] + "4");
       delay(btn_delay);
-      previoustime = millis();
+      lcd_backlight(2);
       // reserved for device depend solutions
     }
     if (not digitalRead(prt_pb5)) {
       Serial.println(msg[10] + "5");
       delay(btn_delay);
-      previoustime = millis();
+      lcd_backlight(2);
       // reserved for device depend solutions
-    }
-  }
-}
-
-// copy text from virtual screen to LCD
-void copyvirtscreen2lcd(byte x, byte y) {
-  for (byte dy = 0; dy <= displayysize - 1; dy++) {
-    for (byte dx = 0; dx <= displayxsize - 1; dx++) {
-      lcd.setCursor(dx, dy);
-      lcd.write(virtscreen[x + dx][y + dy]);
     }
   }
 }
@@ -362,8 +402,9 @@ void setup() {
   pinMode(prt_pb5, INPUT);
   // display
   Serial.println(msg[6]);
-  lcd.begin(displayxsize, displayysize);
+  lcd.begin(lcd_xsize, lcd_ysize);
   lcd_backlight(1);
+  lcd_backlight(2);
   // write program information to display
   for (int b = 0; b <= 3; b++) {
     lcd.setCursor(0, b);
@@ -409,11 +450,7 @@ void setup() {
     virtscreen[0][y] = 48 + (y % 10);
   }
 #else
-  for (byte y = 0; y <= virtscreenysize - 1; y++) {
-    for (byte x = 0; x <= virtscreenxsize - 1; x++) {
-      virtscreen[x][y] = 32;
-    }
-  }
+  clearvirtscreen();
 #endif
   copyvirtscreen2lcd(0, 0);
 }
@@ -421,15 +458,9 @@ void setup() {
 // main function
 void loop() {
   String s;
-  // detect LCD backlight off time
-  currenttime = millis();
-  if (currenttime - previoustime >= bloffinterval)
-  {
-    lcd_backlight(0);
-  } else
-  {
-    lcd_backlight(1);
-  }
+  // auto LCD backlight off
+  lcd_backlight(2);
+  lcd_backlight(3);
   // get operation mode
   if (getmode() != operationmode) {
     operationmode = getmode();
@@ -442,6 +473,9 @@ void loop() {
     lcd.clear();
   }
   // handling serial ports
+#ifdef COM_USB
+  com_handler(0);
+#endif
 #ifdef COM_TTL
   com_handler(1);
 #endif
