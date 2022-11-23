@@ -65,6 +65,12 @@
 #define COM_RS232C                                          // enable Serial #2 port
 // #define TEST                                             // enable test mode of scrolling
 
+#define BEL   0x07                                          // ASCII code of the control characters
+#define TAB   0x09
+#define FF    0x0B
+#define SPACE 0x20
+#define DEL   0x7F
+
 #include <LiquidCrystal.h>
 
 // settings
@@ -167,7 +173,7 @@ void scroll(byte lastline) {
     for (byte x = 0; x <= virtscreenxsize - 1; x++) {
       virtscreen[x][y - 1] = virtscreen[x][y];
       if (y == lastline) {
-        virtscreen[x][y] = 32;
+        virtscreen[x][y] = SPACE;
       }
     }
   }
@@ -187,7 +193,7 @@ void copyvirtscreen2lcd(byte x, byte y) {
 void clearvirtscreen() {
   for (byte y = 0; y <= virtscreenysize - 1; y++) {
     for (byte x = 0; x <= virtscreenxsize - 1; x++) {
-      virtscreen[x][y] = 32;
+      virtscreen[x][y] = SPACE;
     }
   }
 }
@@ -229,6 +235,8 @@ byte com_handler(byte port) {
       }
       break;
   }
+  lcd_backlight(3);
+
   // check datalenght
   if (rxdlength > virtscreenxsize) {
     rxdlength = virtscreenxsize;
@@ -243,22 +251,53 @@ byte com_handler(byte port) {
           virtscreenline = lastline;
         }
         for (byte b = 0; b < rxdlength; b++) {
-          if ((rxdbuffer[b] >= 32) and (rxdbuffer[b] < 255)) {
+          if (rxdbuffer[b] == BEL) {
+            lcd_backlight(0);
+            delay(250);
+            lcd_backlight(1);
+            delay(250);
+            lcd_backlight(0);
+            delay(250);
+            lcd_backlight(1);
+            delay(250);
+            lcd_backlight(0);
+            delay(250);
+            lcd_backlight(1);
+          }
+          if (rxdbuffer[b] == TAB) {
+            rxdbuffer[b] = SPACE;
+          }
+          if ((rxdbuffer[b] >= SPACE) and (rxdbuffer[b] < DEL)) {
             virtscreen[b][virtscreenline] = rxdbuffer[b];
-            Serial.println(byte(rxdbuffer[b]));
           }
         }
         virtscreenline++;
         copyvirtscreen2lcd(virtscreenxpos, 0);
         break;
       case 1:
-        lastline = 24;
+        lastline = virtscreenysize - 1;
         if (virtscreenline == lastline + 1) {
           scroll(lastline);
           virtscreenline = lastline;
         }
         for (byte b = 0; b < rxdlength; b++) {
-          if ((rxdbuffer[b] >= 32) and (rxdbuffer[b] < 255)) {
+          if (rxdbuffer[b] == BEL) {
+            lcd_backlight(0);
+            delay(250);
+            lcd_backlight(1);
+            delay(250);
+            lcd_backlight(0);
+            delay(250);
+            lcd_backlight(1);
+            delay(250);
+            lcd_backlight(0);
+            delay(250);
+            lcd_backlight(1);
+          }
+          if (rxdbuffer[b] == TAB) {
+            rxdbuffer[b] = SPACE;
+          }
+          if ((rxdbuffer[b] >= SPACE) and (rxdbuffer[b] < DEL)) {
             virtscreen[b][virtscreenline] = rxdbuffer[b];
           }
         }
@@ -266,17 +305,33 @@ byte com_handler(byte port) {
         copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
         break;
       case 2:
-        lastline = 24;
+        lastline = virtscreenysize - 1;
+
         if (virtscreenline == lastline + 1) {
           virtscreenline = 0;
         }
         for (byte b = 0; b < rxdlength; b++) {
-          if (((rxdbuffer[b] == 12) or (rxdbuffer[b] >= 32)) and (rxdbuffer[b] < 255)) {
-            if (rxdbuffer[b] == 12) {
-              newpage = true;
-            } else {
-              virtscreen[b][virtscreenline] = rxdbuffer[b];
-            }
+          if (rxdbuffer[b] == BEL) {
+            lcd_backlight(0);
+            delay(250);
+            lcd_backlight(1);
+            delay(250);
+            lcd_backlight(0);
+            delay(250);
+            lcd_backlight(1);
+            delay(250);
+            lcd_backlight(0);
+            delay(250);
+            lcd_backlight(1);
+          }
+          if (rxdbuffer[b] == TAB) {
+            rxdbuffer[b] == SPACE;
+          }
+          if (rxdbuffer[b] == FF) {
+            newpage = true;
+          }
+          if ((rxdbuffer[b] >= SPACE) and (rxdbuffer[b] < DEL)) {
+            virtscreen[b][virtscreenline] = rxdbuffer[b];
           }
         }
         if (newpage) {
