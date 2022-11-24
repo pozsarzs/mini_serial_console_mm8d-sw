@@ -439,6 +439,8 @@ void setup() {
   // set USB serial port
   delay(3000);
   Serial.begin(com_speed[0]);
+  Serial1.begin(com_speed[1]);
+  Serial2.begin(com_speed[2]);
   // write program information to console
   for (int b = 0; b <= 4; b++) {
     if (b == 2) {
