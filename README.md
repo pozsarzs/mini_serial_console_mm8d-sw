@@ -1,4 +1,4 @@
-**Mini serial console with 20x4 LCD, six buttons and dual serial port**  
+**Mini serial console with 20x4 LCD, six buttons and three different ports**  
 Copyright (C) 2022 Pozsár Zsolt <pozsarzs@gmail.com>  
 Homepage: <http://www.pozsarzs.hu>  
 GitHub: <https://github.com/pozsarzs/mini_serial_console-sw>

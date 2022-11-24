@@ -54,15 +54,18 @@
 
    Serial ports:
 
-    Serial0: USB    zero input/console output
-    Serial1: UART0  first input/output (3.3V TTL)
-    Serial2: UART1  second input/output (RS232C)
+    Serial0: via USB
+    Serial1: 3.3V TTL  UART0
+    Serial2: RS232C    UART1
 */
 
 #define LCD_8BIT                                            // enable 8 bit mode of the LCD
-// #define COM_USB                                          // enable Serial #0 port as input
+#define COM_USB                                             // enable Serial #0 port
 #define COM_TTL                                             // enable Serial #1 port
 #define COM_RS232C                                          // enable Serial #2 port
+// #define COM_USB_MESSAGES                                 // enable console messages on Serial #0 port
+// #define COM_TTL_MESSAGES                                 // enable console messages on Serial #1 port
+// #define COM_RS232C_MESSAGES                              // enable console messages on Serial #2 port
 // #define TEST                                             // enable test mode of scrolling
 
 #define BEL   0x07                                          // ASCII code of the control characters
@@ -144,6 +147,18 @@ LiquidCrystal lcd(lcd_rs, lcd_en, lcd_db0, lcd_db1, lcd_db2, lcd_db3, lcd_db4, l
 LiquidCrystal lcd(lcd_rs, lcd_en, lcd_db4, lcd_db5, lcd_db6, lcd_db7);
 #endif
 
+void com_writetoconsole(String message) {
+#ifdef COM_USB_MESSAGES
+  Serial.println(message);
+#endif
+#ifdef COM_TTL_MESSAGES
+  Serial1.println(message);
+#endif
+#ifdef COM_RS232C_MESSAGES
+  Serial2.println(message);
+#endif
+}
+
 // LCD - turn on/off background light
 void lcd_backlight(byte opmode) {
   switch (opmode) {
@@ -211,7 +226,7 @@ byte com_handler(byte port) {
       if (Serial.available()) {
         digitalWrite(prt_led, HIGH);
         rxdlength = Serial.readBytes(rxdbuffer, rxdbuffersize);
-        Serial.println(msg[9] + String(port));
+        com_writetoconsole(msg[9] + String(port));
         digitalWrite(prt_led, LOW);
         lcd_backlight(2);
       }
@@ -220,7 +235,7 @@ byte com_handler(byte port) {
       if (Serial1.available()) {
         digitalWrite(prt_led, HIGH);
         rxdlength = Serial1.readBytes(rxdbuffer, rxdbuffersize);
-        Serial.println(msg[9] + String(port));
+        com_writetoconsole(msg[9] + String(port));
         digitalWrite(prt_led, LOW);
         lcd_backlight(2);
       }
@@ -229,7 +244,7 @@ byte com_handler(byte port) {
       if (Serial2.available()) {
         digitalWrite(prt_led, HIGH);
         rxdlength = Serial2.readBytes(rxdbuffer, rxdbuffersize);
-        Serial.println(msg[9] + String(port));
+        com_writetoconsole(msg[9] + String(port));
         digitalWrite(prt_led, LOW);
         lcd_backlight(2);
       }
@@ -355,7 +370,7 @@ byte com_handler(byte port) {
 void btn_handler(byte m) {
   // horizontal move
   if (not digitalRead(prt_pb0)) {
-    Serial.println(msg[10] + "0");
+    com_writetoconsole(msg[10] + "0");
     delay(btn_delay);
     lcd_backlight(2);
     if (virtscreenxpos > 0) {
@@ -364,7 +379,7 @@ void btn_handler(byte m) {
     }
   }
   if (not digitalRead(prt_pb1)) {
-    Serial.println(msg[10] + "1");
+    com_writetoconsole(msg[10] + "1");
     delay(btn_delay);
     lcd_backlight(2);
     if (virtscreenxpos + lcd_xsize < virtscreenxsize) {
@@ -375,7 +390,7 @@ void btn_handler(byte m) {
   // vertical move
   if (m > 0) {
     if (not digitalRead(prt_pb2)) {
-      Serial.println(msg[10] + "2");
+      com_writetoconsole(msg[10] + "2");
       delay(btn_delay);
       lcd_backlight(2);
       if (virtscreenypos > 0) {
@@ -384,7 +399,7 @@ void btn_handler(byte m) {
       }
     }
     if (not digitalRead(prt_pb3)) {
-      Serial.println(msg[10] + "3");
+      com_writetoconsole(msg[10] + "3");
       delay(btn_delay);
       lcd_backlight(2);
       if (virtscreenypos + lcd_ysize < virtscreenysize) {
@@ -396,13 +411,13 @@ void btn_handler(byte m) {
   // data input
   if (m == 3) {
     if (not digitalRead(prt_pb4)) {
-      Serial.println(msg[10] + "4");
+      com_writetoconsole(msg[10] + "4");
       delay(btn_delay);
       lcd_backlight(2);
       // reserved for device depend solutions
     }
     if (not digitalRead(prt_pb5)) {
-      Serial.println(msg[10] + "5");
+      com_writetoconsole(msg[10] + "5");
       delay(btn_delay);
       lcd_backlight(2);
       // reserved for device depend solutions
@@ -427,14 +442,14 @@ void setup() {
   // write program information to console
   for (int b = 0; b <= 4; b++) {
     if (b == 2) {
-      Serial.println(msg[b] + swversion);
+      com_writetoconsole(msg[b] + swversion);
     } else {
-      Serial.println(msg[b]);
+      com_writetoconsole(msg[b]);
     }
   }
   // initializing I/O devices
   // GPIO ports
-  Serial.println(msg[5]);
+  com_writetoconsole(msg[5]);
   pinMode(lcd_bl, OUTPUT);
   pinMode(lcd_db0, OUTPUT);
   pinMode(lcd_db1, OUTPUT);
@@ -456,7 +471,7 @@ void setup() {
   pinMode(prt_pb4, INPUT);
   pinMode(prt_pb5, INPUT);
   // display
-  Serial.println(msg[6]);
+  com_writetoconsole(msg[6]);
   lcd.begin(lcd_xsize, lcd_ysize);
   lcd_backlight(1);
   lcd_backlight(2);
@@ -472,19 +487,19 @@ void setup() {
   delay(3000);
   lcd.clear();
   // serial ports
-  Serial.println(msg[7]);
+  com_writetoconsole(msg[7]);
   Serial1.begin(com_speed[1]);
   Serial2.begin(com_speed[2]);
   for (int b = 0; b <= 2; b++) {
     s = "#" + String(b) + ": " + String(com_speed[b]) + " b/s";
-    Serial.println("   " + s);
+    com_writetoconsole("   " + s);
     lcd.setCursor(0, b);
     lcd.print(s);
   }
   // get operation mode
   operationmode = getmode();
   s = msg[8] + String(operationmode);
-  Serial.println(" * " + s);
+  com_writetoconsole(" * " + s);
   lcd.setCursor(0, 3);
   lcd.print(s);
   delay(3000);
@@ -520,7 +535,7 @@ void loop() {
   if (getmode() != operationmode) {
     operationmode = getmode();
     s = msg[8] + String(operationmode);
-    Serial.println(" * " + s);
+    com_writetoconsole(" * " + s);
     lcd.clear();
     lcd.setCursor(0, 2);
     lcd.print(s);
