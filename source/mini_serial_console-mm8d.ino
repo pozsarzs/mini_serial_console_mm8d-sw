@@ -98,20 +98,20 @@
     9:  status of lamp output                 0: off     1: on
     a:  status of ventilator output           0: off     1: on
     b:  status of heater output               0: off     1: on
-    
+
       1  2
     ----------------------------
     "CH8|DISABLED"
-  
+
     1:  channel
     2:  sign of disabled channel
-    
+
        1      2    3           4
     ----------------------------------------------------------
     "221213 114421 I Configuration is loaded."
     "221213 114427 W CH2: MM6D is not accessible."
     "221213 114427 E ERROR #18: There is not enabled channel!"
-  
+
     1:  date in yymmdd format
     2:  time in hhmmss format
     3:  level (information, warning, error)
@@ -172,6 +172,8 @@ const byte    prt_led           = LED_BUILTIN;              // LED on the board 
 const String  swversion         = "0.1";                    // version of this program
 const int     btn_delay         = 200;                      // time after read button status
 // general variables
+char          virtstatuspage[9][10];                        // virtual status pages
+byte          virtstatuspagenum = 0;                        // page num. for copy data (virtstatuspage->display)
 char          virtscreen[virtscreenxsize][virtscreenysize]; // virtual screen
 byte          virtscreenline    = 0;                        // y pos. for copy data (rxdbuffer->virtscreen)
 byte          virtscreenxpos    = 0;                        // x pos. for copy data (virtscreen->display)
@@ -269,6 +271,20 @@ void clearvirtscreen() {
   for (byte y = 0; y <= virtscreenysize - 1; y++) {
     for (byte x = 0; x <= virtscreenxsize - 1; x++) {
       virtscreen[x][y] = SPACE;
+    }
+  }
+}
+
+// copy selected virtual status page to LCD
+void copyvirtstatuspage2lcd(byte page) {
+  // !!! ne felejts el !!!
+}
+
+// clear virtual status pages
+void clearvirtstatuspage() {
+  for (byte y = 0; y <= 9; y++) {
+    for (byte x = 0; x <= 8; x++) {
+      virtstatuspage[x][y] = SPACE;
     }
   }
 }
@@ -425,8 +441,9 @@ byte com_handler(byte port) {
         if ((rxdbuffer[0] == 0x43) and (rxdbuffer[1] == 0x48))
         {
           // if the received line is data
+          // !!! tárolás !!!
           if (operationsubmode == 0) {
-            // !!! megjelenítés !!!
+            // !!! aktuális oldal megjelenítése !!!
           }
         } else
         {
@@ -708,8 +725,13 @@ void setup() {
   }
 #else
   clearvirtscreen();
+  clearvirtstatuspage();
 #endif
-  copyvirtscreen2lcd(0, 0);
+  if (operationmode == 3) {
+    copyvirtstatuspage2lcd(0);
+  } else {
+    copyvirtscreen2lcd(0, 0);
+  }
 }
 
 // main function
