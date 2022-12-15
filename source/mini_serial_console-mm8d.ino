@@ -35,16 +35,21 @@
     Mode #3/0: read only mode,
                no cursor,
                20x4 size displayed area on 80x25* size virtual screen,
-               automatically scrolling lines,
                the displayed page can be change with pushbuttons,
-               switch to other submode with PB5 button.
+               switch to other submode with PB4 button.
     Mode #3/1: read only mode,
+               no cursor,
+               20x4 size displayed area on 80x25* size virtual screen,
+               the displayed page can be change with pushbuttons,
+               switch to other submode with PB4 button.
+    Mode #3/2: read only mode,
                no cursor,
                20x4 size displayed area on 80x25* size virtual screen,
                automatically scrolling lines,
                the displayed area can be moved horizontally and vertically with
                pushbuttons,
                switch to other submode with PB4 button.
+               lock scroll with PB5 button
 
     Note:
      '*': You can set size of the virtual screen with virtscreenxsize and
@@ -53,14 +58,14 @@
 
   Button functions:
 
-    Button  Mode #0     Mode #1     Mode #2     Mode #3/0   Mode #3/1
-    -------------------------------------------------------------------
-     PB0    move left   move left   move left               move left
-     PB1    move right  move right  move right              move right
-     PB2                move up     move up     page up     scroll up
-     PB3                move down   move down   page down   scroll down
-     PB4                                        view status view status
-     PB5                                        view log    view log
+    Button  Mode #0     Mode #1     Mode #2     Mode #3/0   Mode #3/1   Mode #3/2
+    -------------------------------------------------------------------------------
+     PB0    move left   move left   move left                           move left
+     PB1    move right  move right  move right                          move right
+     PB2                move up     move up     page up     page up     scroll up
+     PB3                move down   move down   page down   pahe down   scroll down
+     PB4                                        submode     submode     submode
+     PB5                                                                lock scroll
 
   Serial ports:
 
@@ -75,13 +80,13 @@
     "CH0|0|0|0|31|0|0|0"
 
     1:  channel
-    2:  overcurrent breaker error             0: closed  1: opened
-    3:  water pump pressure error (no water)  0: good    1: bad
-    4:  water pump pressure error (clogging)  0: good    1: bad
+    2:  overcurrent breaker error             0: closed 1: opened
+    3:  water pump pressure error (no water)  0: good   1: bad
+    4:  water pump pressure error (clogging)  0: good   1: bad
     5:  external temperature in °C
-    6:  status of water pump and tube #1      0: off     1: on
-    7:  status of water pump and tube #2      0: off     1: on
-    8:  status of water pump and tube #3      0: off     1: on
+    6:  status of water pump and tube #1      0: off    1: on       x: always off !: always on
+    7:  status of water pump and tube #2      0: off    1: on       x: always off !: always on
+    8:  status of water pump and tube #3      0: off    1: on       x: always off !: always on
 
       1  2  3  4  5 6 7 8 9 a b
     ----------------------------
@@ -95,9 +100,9 @@
     6:  manual mode                           0: auto    1: manual
     7:  overcurrent breaker error             0: closed  1: opened
     8:  status of door (alarm)                0: closed  1: opened
-    9:  status of lamp output                 0: off     1: on
-    a:  status of ventilator output           0: off     1: on
-    b:  status of heater output               0: off     1: on
+    9:  status of lamp output                 0: off     1: on       x: always off !: always on
+    a:  status of ventilator output           0: off     1: on       x: always off !: always on
+    b:  status of heater output               0: off     1: on       x: always off !: always on
 
       1  2
     ----------------------------
@@ -136,68 +141,76 @@
 #include <LiquidCrystal.h>
 
 // settings
-const int     lcd_bloffinterval = 60000;                    // LCD backlight off time after last button press
-const byte    lcd_xsize         = 20;                       // horizontal size of display
-const byte    lcd_ysize         = 4;                        //vertical size of display
-const byte    virtscreenxsize   = 80;                       // horizontal size of virtual screen
-const byte    virtscreenysize   = 25;                       // vertical size of virtual screen
+const int     lcd_bloffinterval       = 60000;             // LCD backlight off time after last button press
+const byte    lcd_xsize               = 20;                // horizontal size of display
+const byte    lcd_ysize               = 4;                 //vertical size of display
+const byte    virtscreenxsize         = 80;                // horizontal size of virtual screen
+const byte    virtscreenysize         = 25;                // vertical size of virtual screen
 // serial ports
-const int     com_speed[3]      = {115200, 9600, 9600};     // speed of the USB serial port
+const int     com_speed[3]            = {115200,
+                                         9600,
+                                         9600
+                                        };                 // speed of the USB serial port
 #ifdef ARDUINO_ARCH_MBED_RP2040
-const byte    com_rxd2          = 8;
-const byte    com_txd2          = 9;
+const byte    com_rxd2                = 8;
+const byte    com_txd2                = 9;
 #endif
 // GPIO ports
-const byte    lcd_bl            = 14;                       // LCD - backlight on/off
-const byte    lcd_db0           = 2;                        // LCD - databit 0
-const byte    lcd_db1           = 3;                        // LCD - databit 1
-const byte    lcd_db2           = 4;                        // LCD - databit 2
-const byte    lcd_db3           = 5;                        // LCD - databit 3
-const byte    lcd_db4           = 10;                       // LCD - databit 4
-const byte    lcd_db5           = 11;                       // LCD - databit 5
-const byte    lcd_db6           = 12;                       // LCD - databit 6
-const byte    lcd_db7           = 13;                       // LCD - databit 7
-const byte    lcd_en            = 7;                        // LCD - enable
-const byte    lcd_rs            = 6;                        // LCD - register select
-const byte    prt_jp2           = 16;                       // operation mode (JP2 jumper)
-const byte    prt_jp3           = 15;                       // operation mode (JP3 jumper)
-const byte    prt_pb0           = 17;                       // pushbutton 0
-const byte    prt_pb1           = 18;                       // pushbutton 1
-const byte    prt_pb2           = 19;                       // pushbutton 2
-const byte    prt_pb3           = 20;                       // pushbutton 3
-const byte    prt_pb4           = 21;                       // pushbutton 4
-const byte    prt_pb5           = 22;                       // pushbutton 5
-const byte    prt_led           = LED_BUILTIN;              // LED on the board of Pico
+const byte    lcd_bl                  = 14;                // LCD - backlight on/off
+const byte    lcd_db0                 = 2;                 // LCD - databit 0
+const byte    lcd_db1                 = 3;                 // LCD - databit 1
+const byte    lcd_db2                 = 4;                 // LCD - databit 2
+const byte    lcd_db3                 = 5;                 // LCD - databit 3
+const byte    lcd_db4                 = 10;                // LCD - databit 4
+const byte    lcd_db5                 = 11;                // LCD - databit 5
+const byte    lcd_db6                 = 12;                // LCD - databit 6
+const byte    lcd_db7                 = 13;                // LCD - databit 7
+const byte    lcd_en                  = 7;                 // LCD - enable
+const byte    lcd_rs                  = 6;                 // LCD - register select
+const byte    prt_jp2                 = 16;                // operation mode (JP2 jumper)
+const byte    prt_jp3                 = 15;                // operation mode (JP3 jumper)
+const byte    prt_pb0                 = 17;                // pushbutton 0
+const byte    prt_pb1                 = 18;                // pushbutton 1
+const byte    prt_pb2                 = 19;                // pushbutton 2
+const byte    prt_pb3                 = 20;                // pushbutton 3
+const byte    prt_pb4                 = 21;                // pushbutton 4
+const byte    prt_pb5                 = 22;                // pushbutton 5
+const byte    prt_led                 = LED_BUILTIN;       // LED on the board of Pico
 // general constants
-const String  swversion         = "0.1";                    // version of this program
-const int     btn_delay         = 200;                      // time after read button status
+const String  swversion               = "0.1";             // version of this program
+const int     btn_delay               = 200;               // time after read button status
 // general variables
+char          virtoverridepage[9][3];                       // virtual status pages
+byte          virtoverridepagenum     = 0;                  // page num. for copy data (virtstatuspage->display)
 char          virtstatuspage[9][10];                        // virtual status pages
-byte          virtstatuspagenum = 0;                        // page num. for copy data (virtstatuspage->display)
+byte          virtstatuspagenum       = 0;                  // page num. for copy data (virtstatuspage->display)
 char          virtscreen[virtscreenxsize][virtscreenysize]; // virtual screen
-byte          virtscreenline    = 0;                        // y pos. for copy data (rxdbuffer->virtscreen)
-byte          virtscreenxpos    = 0;                        // x pos. for copy data (virtscreen->display)
-byte          virtscreenypos    = 0;                        // y pos. for copy data (virtscreen->display)
+byte          virtscreenline          = 0;                  // y pos. for copy data (rxdbuffer->virtscreen)
+byte          virtscreenxpos          = 0;                  // x pos. for copy data (virtscreen->display)
+byte          virtscreenypos          = 0;                  // y pos. for copy data (virtscreen->display)
+byte          virtscreenscrolllock    = 0;                  // lock autoscroll of the log
 byte          operationmode;                                // operation mode of device
-byte          operationsubmode  = 0;                        // sub operation mode of device in mode #3
+byte          operationsubmode        = 0;                  // sub operation mode of device in mode #3
 unsigned long currenttime;                                  // current time
-unsigned long previoustime      = 0;                        // last time of receiving or button pressing
+unsigned long previoustime            = 0;                  // last time of receiving or button pressing
 
 // messages
-String msg[14]                  =
-{
-  /*  0 */  "    MM8D console",
-  /*  1 */  "--------------------",
-  /*  2 */  "sw.: v",
-  /*  3 */  "(C)2022 Pozsar Zsolt",
-  /*  4 */  "Initializing...",
-  /*  5 */  " * GPIO ports",
-  /*  6 */  " * LCD",
-  /*  7 */  " * Serial ports:",
-  /*  8 */  "Operation mode: #",
-  /*  9 */  "Read a line from serial port #",
-  /* 10 */  "Button pressed: PB"
-};
+String msg[15]                        = {"    MM8D console",
+                                         "--------------------",
+                                         "sw.: v",
+                                         "(C)2022 Pozsar Zsolt",
+                                         "Initializing...",
+                                         " * GPIO ports",
+                                         " * LCD",
+                                         " * Serial ports:",
+                                         "Operation mode: #",
+                                         "Read a line from serial port #",
+                                         "Button pressed: PB"
+                                         "Change to status pages"
+                                         "Change to override pages"
+                                         "Change to log page"
+                                         "Lock autoscroll of log page"
+                                        };
 
 #ifdef ARDUINO_ARCH_MBED_RP2040
 UART Serial2(com_rxd2, com_txd, NC, NC);
@@ -244,7 +257,35 @@ void lcd_backlight(byte opmode) {
   }
 }
 
-// scroll up one line on virtual screen
+// copy selected virtual status page to LCD
+void copyvirtstatuspage2lcd(byte page) {
+  // !!! ne felejts el !!!
+}
+
+// clear virtual status pages
+void clearvirtstatuspage() {
+  for (byte y = 0; y <= 9; y++) {
+    for (byte x = 0; x <= 8; x++) {
+      virtstatuspage[x][y] = SPACE;
+    }
+  }
+}
+
+// copy selected virtual override page to LCD
+void copyvirtoverridepage2lcd(byte page) {
+  // !!! ne felejts el !!!
+}
+
+// clear virtual override pages
+void clearvirtoverridepage() {
+  for (byte y = 0; y <= 2; y++) {
+    for (byte x = 0; x <= 8; x++) {
+      virtoverridepage[x][y] = SPACE;
+    }
+  }
+}
+
+// scroll up one line on virtual screen (log page in Mode #3)
 void scroll(byte lastline) {
   for (byte y = 1; y <= lastline; y++) {
     for (byte x = 0; x <= virtscreenxsize - 1; x++) {
@@ -256,7 +297,7 @@ void scroll(byte lastline) {
   }
 }
 
-// copy text from virtual screen to LCD
+// copy text from virtual screen (log page in Mode #3) to LCD
 void copyvirtscreen2lcd(byte x, byte y) {
   for (byte dy = 0; dy <= lcd_ysize - 1; dy++) {
     for (byte dx = 0; dx <= lcd_xsize - 1; dx++) {
@@ -266,25 +307,11 @@ void copyvirtscreen2lcd(byte x, byte y) {
   }
 }
 
-// clear virtual screen
+// clear virtual screen (log page in Mode #3)
 void clearvirtscreen() {
   for (byte y = 0; y <= virtscreenysize - 1; y++) {
     for (byte x = 0; x <= virtscreenxsize - 1; x++) {
       virtscreen[x][y] = SPACE;
-    }
-  }
-}
-
-// copy selected virtual status page to LCD
-void copyvirtstatuspage2lcd(byte page) {
-  // !!! ne felejts el !!!
-}
-
-// clear virtual status pages
-void clearvirtstatuspage() {
-  for (byte y = 0; y <= 9; y++) {
-    for (byte x = 0; x <= 8; x++) {
-      virtstatuspage[x][y] = SPACE;
     }
   }
 }
@@ -327,7 +354,6 @@ byte com_handler(byte port) {
       break;
   }
   lcd_backlight(3);
-
   // check datalenght
   if (rxdlength > virtscreenxsize) {
     rxdlength = virtscreenxsize;
@@ -442,8 +468,15 @@ byte com_handler(byte port) {
         {
           // if the received line is data
           // !!! tárolás !!!
-          if (operationsubmode == 0) {
-            // !!! aktuális oldal megjelenítése !!!
+          if (operationsubmode < 2) {
+            switch (operationsubmode) {
+              case 0:
+                // !!! aktuális oldal megjelenítése !!!
+                break;
+              case 1:
+                // !!! aktuális oldal megjelenítése !!!
+                break;
+            }
           }
         } else
         {
@@ -518,14 +551,20 @@ void btn_handler(byte m, byte sm) {
       com_writetoconsole(msg[10] + "0");
       delay(btn_delay);
       lcd_backlight(2);
-      // SubMode #0: nothing
-      //         #1: scroll lines
-      if (sm == 0) {
-      } else {
-        if (virtscreenxpos > 0) {
-          virtscreenxpos--;
-          copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
-        }
+      switch (sm) {
+        case 0:
+          // SubMode #0: nothing
+          break;
+        case 1:
+          // SubMode #1: nothing
+          break;
+        case 2:
+          // SubMode #2: move lines
+          if (virtscreenxpos > 0) {
+            virtscreenxpos--;
+            copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
+          }
+          break;
       }
     }
     // [RIGHT] button in Mode #3
@@ -533,14 +572,20 @@ void btn_handler(byte m, byte sm) {
       com_writetoconsole(msg[10] + "1");
       delay(btn_delay);
       lcd_backlight(2);
-      // SubMode #0: nothing
-      //         #1: scroll lines
-      if (sm == 0) {
-      } else {
-        if (virtscreenxpos + lcd_xsize < virtscreenxsize) {
-          virtscreenxpos++;
-          copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
-        }
+      switch (sm) {
+        case 0:
+          // SubMode #0: nothing
+          break;
+        case 1:
+          // SubMode #1: nothing
+          break;
+        case 2:
+          // SubMode #2: move lines
+          if (virtscreenxpos + lcd_xsize < virtscreenxsize) {
+            virtscreenxpos++;
+            copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
+          }
+          break;
       }
     }
   }
@@ -575,15 +620,22 @@ void btn_handler(byte m, byte sm) {
       com_writetoconsole(msg[10] + "2");
       delay(btn_delay);
       lcd_backlight(2);
-      // SubMode #0: change page
-      //         #1: scroll lines
-      if (sm == 0) {
-        // !!! előző oldal megjelenítése !!!
-      } else {
-        if (virtscreenypos > 0) {
-          virtscreenypos--;
-          copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
-        }
+      switch (sm) {
+        case 0:
+          // SubMode #0: change page
+          // !!! előző oldal megjelenítése !!!
+          break;
+        case 1:
+          // SubMode #1: change page
+          // !!! előző oldal megjelenítése !!!
+          break;
+        case 2:
+          // SubMode #2: scroll lines
+          if (virtscreenypos > 0) {
+            virtscreenypos--;
+            copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
+          }
+          break;
       }
     }
     // [DOWN] button in Mode #0, #1 and #2
@@ -591,15 +643,22 @@ void btn_handler(byte m, byte sm) {
       com_writetoconsole(msg[10] + "3");
       delay(btn_delay);
       lcd_backlight(2);
-      // SubMode #0: change page
-      //         #1: scroll lines
-      if (sm == 0) {
-        // !!! következő oldal megjelenítése !!!
-      } else {
-        if (virtscreenypos + lcd_ysize < virtscreenysize) {
-          virtscreenypos++;
-          copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
-        }
+      switch (sm) {
+        case 0:
+          // SubMode #0: change page
+          // !!! következő oldal megjelenítése !!!
+          break;
+        case 1:
+          // SubMode #1: change page
+          // !!! következő oldal megjelenítése !!!
+          break;
+        case 2:
+          // SubMode #2: scroll lines
+          if (virtscreenypos + lcd_ysize < virtscreenysize) {
+            virtscreenypos++;
+            copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
+          }
+          break;
       }
     }
   }
@@ -610,18 +669,34 @@ void btn_handler(byte m, byte sm) {
       com_writetoconsole(msg[10] + "4");
       delay(btn_delay);
       lcd_backlight(2);
-      // change to SubMode #0, and view actual page
-      operationsubmode = 0;
+      // change SubMode and view actual page
+      if (operationsubmode < 3) {
+        operationsubmode++;
+      } else {
+        operationsubmode = 0;
+      }
       lcd.clear();
-      // !!! aktuális oldal megjelenítése !!!
+      switch (operationsubmode) {
+        case 0:
+          // !!! aktuális oldal megjelenítése !!!
+          break;
+        case 1:
+          // !!! aktuális oldal megjelenítése !!!
+          break;
+        case 2:
+          // !!! aktuális oldal megjelenítése !!!
+          break;
+      }
     }
     // [F2] button in Mode #3
     if (not digitalRead(prt_pb5)) {
       com_writetoconsole(msg[10] + "5");
       delay(btn_delay);
       lcd_backlight(2);
-      // change to SubMode #1, and view log at actual position
-      operationsubmode = 1;
+      // SubMode #2: lock autoscroll of the log
+      if (operationsubmode == 2) {
+        virtscreenscrolllock = not virtscreenscrolllock;
+      }
       lcd.clear();
       copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
     }
