@@ -180,9 +180,9 @@ const byte    prt_led                 = LED_BUILTIN;       // LED on the board o
 const String  swversion               = "0.1";             // version of this program
 const int     btn_delay               = 200;               // time after read button status
 // general variables
-char          virtoverridepage[9][3];                       // virtual status pages
+byte          virtoverridepage[9][3];                       // virtual status pages
 byte          virtoverridepagenum     = 0;                  // page num. for copy data (virtstatuspage->display)
-char          virtstatuspage[9][10];                        // virtual status pages
+byte          virtstatuspage[9][10];                        // virtual status pages
 byte          virtstatuspagenum       = 0;                  // page num. for copy data (virtstatuspage->display)
 char          virtscreen[virtscreenxsize][virtscreenysize]; // virtual screen
 byte          virtscreenline          = 0;                  // y pos. for copy data (rxdbuffer->virtscreen)
@@ -195,21 +195,31 @@ unsigned long currenttime;                                  // current time
 unsigned long previoustime            = 0;                  // last time of receiving or button pressing
 
 // messages
-String msg[15]                        = {"    MM8D console",
-                                         "--------------------",
-                                         "sw.: v",
-                                         "(C)2022 Pozsar Zsolt",
-                                         "Initializing...",
-                                         " * GPIO ports",
-                                         " * LCD",
-                                         " * Serial ports:",
-                                         "Operation mode: #",
-                                         "Read a line from serial port #",
-                                         "Button pressed: PB"
-                                         "Change to status pages"
-                                         "Change to override pages"
-                                         "Change to log page"
-                                         "Lock autoscroll of log page"
+String msg[25]                        = {"    MM8D console",               // 00
+                                         "--------------------",           // 01
+                                         "sw.: v",                         // 02
+                                         "(C)2022 Pozsar Zsolt",           // 03
+                                         "Initializing...",                // 04
+                                         " * GPIO ports",                  // 05
+                                         " * LCD",                         // 06
+                                         " * Serial ports:",               // 07
+                                         "operation mode: #",              // 08
+                                         "Read a line from serial port #", // 09
+                                         "Button pressed: PB",             // 10
+                                         "Change to status pages",         // 11
+                                         "Change to override pages",       // 12
+                                         "Change to log page",             // 13
+                                         "Lock autoscroll of log page",    // 14
+                                         "STATUS"                          // 15
+                                         "val"                             // 16
+                                         "in"                              // 17
+                                         "out"                             // 18
+                                         "disabled channel"                // 19
+                                         "OVERRIDE"                        // 20
+                                         "tube #"                          // 21
+                                         "lamp:"                           // 22
+                                         "ventilator:"                     // 23
+                                         "heater:"                         // 24
                                         };
 
 #ifdef ARDUINO_ARCH_MBED_RP2040
@@ -259,7 +269,67 @@ void lcd_backlight(byte opmode) {
 
 // copy selected virtual status page to LCD
 void copyvirtstatuspage2lcd(byte page) {
-  // !!! ne felejts el !!!
+  if (page == 0) {
+    /*  +--------------------+
+        |CH #0         STATUS|
+        |val   T:00°C        |
+        |in    BE:0 LP:0 HP:0|
+        |out   T1:0 T2:0 T3:0|
+        +--------------------+
+    */
+    lcd.setCursor(0, 0); lcd.print("CH #" + String(page));
+    lcd.setCursor(lcd_xsize - msg[15].length(), 0); lcd.print(msg[15]);
+    lcd.setCursor(0, 1); lcd.print(msg[16]);
+    lcd.setCursor(0, 2); lcd.print(msg[17]);
+    lcd.setCursor(0, 3); lcd.print(msg[18]);
+    lcd.setCursor(lcd_xsize - 14, 1); lcd.print("T:" + String(virtstatuspage[page][3]) + "°C");
+    lcd.setCursor(lcd_xsize - 14, 2);
+    lcd.print("BE:" + String(virtstatuspage[page][0]) + " " +
+              +"LP:" + String(virtstatuspage[page][1]) + " " +
+              +"HP:" + String(virtstatuspage[page][2]));
+    lcd.setCursor(lcd_xsize - 14, 3);
+    lcd.print("T1:" + String(virtstatuspage[page][4]) + " " +
+              +"T2:" + String(virtstatuspage[page][5]) + " " +
+              +"T3:" + String(virtstatuspage[page][6]));
+  } else {
+  }
+  if (virtstatuspage[page][0] == 255) {
+    /*  +--------------------+
+        |CH #3         STATUS|
+        |                    |
+        |  disabled channel  |
+        |                    |
+        +--------------------+
+    */
+    lcd.setCursor(0, 0); lcd.print("CH #" + String(page));
+    lcd.setCursor(lcd_xsize - msg[15].length(), 0); lcd.print(msg[15]);
+    lcd.setCursor(lcd_xsize / 2 - msg[19].length() / 2, 2); lcd.print(msg[16]);
+  } else {
+    /*  +--------------------+
+        |CH #1         STATUS|
+        |val   T:00°C RH:100%|
+        |in    OM:H CM:A BE:0|
+        |out   LA:0 VE:0 HE:0|
+        +--------------------+
+    */
+    lcd.setCursor(0, 0); lcd.print("CH #" + String(page));
+    lcd.setCursor(lcd_xsize - msg[15].length(), 0); lcd.print(msg[15]);
+    lcd.setCursor(0, 1); lcd.print(msg[16]);
+    lcd.setCursor(0, 2); lcd.print(msg[17]);
+    lcd.setCursor(0, 3); lcd.print(msg[18]);
+
+    lcd.setCursor(lcd_xsize - 14, 1);
+    lcd.print("T:" + String(virtstatuspage[page][0]) + "°C " +
+              +" RH:" + String(virtstatuspage[page][1]) + "%");
+    lcd.setCursor(lcd_xsize - 14, 2);
+    lcd.print("OM:" + String(virtstatuspage[page][3]) + " " +
+              +"CM:" + String(virtstatuspage[page][4]) + " " +
+              +"BE:" + String(virtstatuspage[page][5]));
+    lcd.setCursor(lcd_xsize - 14, 3);
+    lcd.print("LA:" + String(virtstatuspage[page][7]) + " " +
+              +"VE:" + String(virtstatuspage[page][8]) + " " +
+              +"HE:" + String(virtstatuspage[page][9]));
+  }
 }
 
 // clear virtual status pages
@@ -772,15 +842,13 @@ void setup() {
   for (int b = 0; b <= 2; b++) {
     s = "#" + String(b) + ": " + String(com_speed[b]) + " b/s";
     com_writetoconsole("   " + s);
-    lcd.setCursor(0, b);
-    lcd.print(s);
+    lcd.setCursor(0, b); lcd.print(s);
   }
   // get operation mode
   operationmode = getmode();
   s = msg[8] + String(operationmode);
   com_writetoconsole(" * " + s);
-  lcd.setCursor(0, 3);
-  lcd.print(s);
+  lcd.setCursor(0, 3); lcd.print(s);
   delay(3000);
   lcd.clear();
   // clean of fill data virtual screen and copy LCD
@@ -821,8 +889,7 @@ void loop() {
     s = msg[8] + String(operationmode);
     com_writetoconsole(" * " + s);
     lcd.clear();
-    lcd.setCursor(0, 2);
-    lcd.print(s);
+    lcd.setCursor(0, 2); lcd.print(s);
     delay(1000);
     lcd.clear();
   }
