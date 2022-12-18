@@ -75,41 +75,42 @@
 
   Example incoming lines in Mode #3:
 
-      1  2 3 4 5  6 7 8
-    --------------------
-    "CH0|0|0|0|31|0|0|0"
+      1  2 3 4 5  6 7 8 9 a b
+    --------------------------
+    "CH0|0|0|0|31|0|0|0|0|0|0"
 
-    1:  channel
-    2:  overcurrent breaker error             0: closed 1: opened
-    3:  water pump pressure error (no water)  0: good   1: bad
-    4:  water pump pressure error (clogging)  0: good   1: bad
-    5:  external temperature in °C
-    6:  status of water pump and tube #1      0: off    1: on       x: always off !: always on
-    7:  status of water pump and tube #2      0: off    1: on       x: always off !: always on
-    8:  status of water pump and tube #3      0: off    1: on       x: always off !: always on
+    1:   channel
+    2:   overcurrent breaker error             0: closed 1: opened
+    3:   water pump pressure error (no water)  0: good   1: bad
+    4:   water pump pressure error (clogging)  0: good   1: bad
+    5:   external temperature in °C
+    6:   status of water pump and tube #1      0: off    1: on       x: always off !: always on
+    7:   status of water pump and tube #2      0: off    1: on       x: always off !: always on
+    8:   status of water pump and tube #3      0: off    1: on       x: always off !: always on
+    a-b: unused
 
       1  2  3  4  5 6 7 8 9 a b
     ----------------------------
     "CH1|11|21|31|0|1|0|0|1|0|1"
 
-    1:  channel
-    2:  temperature in °C
-    3:  relative humidity
-    4:  relative unwanted gas concentrate
-    5:  operation mode                        0: hyphae  1: mushroom
-    6:  manual mode                           0: auto    1: manual
-    7:  overcurrent breaker error             0: closed  1: opened
-    8:  status of door (alarm)                0: closed  1: opened
-    9:  status of lamp output                 0: off     1: on       x: always off !: always on
-    a:  status of ventilator output           0: off     1: on       x: always off !: always on
-    b:  status of heater output               0: off     1: on       x: always off !: always on
+    1:   channel
+    2:   temperature in °C
+    3:   relative humidity
+    4:   relative unwanted gas concentrate
+    5:   operation mode                        0: hyphae  1: mushroom
+    6:   manual mode                           0: auto    1: manual
+    7:   overcurrent breaker error             0: closed  1: opened
+    8:   status of door (alarm)                0: closed  1: opened
+    9:   status of lamp output                 0: off     1: on       x: always off  !: always on
+    a:   status of ventilator output           0: off     1: on       x: always off  !: always on
+    b:   status of heater output               0: off     1: on       x: always off  !: always on
 
-      1  2
-    ----------------------------
-    "CH8|DISABLED"
+      1  2 3 4 5 6 7 8 9 a b
+    -------------------------
+    "CH8|D|D|D|D|D|D|D|D|D|D"
 
-    1:  channel
-    2:  sign of disabled channel
+    1:   channel
+    2-b: sign of disabled channel
 
        1      2    3           4
     ----------------------------------------------------------
@@ -117,10 +118,10 @@
     "221213 114427 W CH2: MM6D is not accessible."
     "221213 114427 E ERROR #18: There is not enabled channel!"
 
-    1:  date in yymmdd format
-    2:  time in hhmmss format
-    3:  level (information, warning, error)
-    4:  short description
+    1:   date in yymmdd format
+    2:   time in hhmmss format
+    3:   level (information, warning, error)
+    4:   short description
 */
 
 #define LCD_8BIT                                            // enable 8 bit mode of the LCD
@@ -195,7 +196,7 @@ unsigned long currenttime;                                  // current time
 unsigned long previoustime            = 0;                  // last time of receiving or button pressing
 
 // messages
-String msg[25]                        = {"    MM8D console",               // 00
+String msg[28]                        = {"    MM8D console",               // 00
                                          "--------------------",           // 01
                                          "sw.: v",                         // 02
                                          "(C)2022 Pozsar Zsolt",           // 03
@@ -210,16 +211,19 @@ String msg[25]                        = {"    MM8D console",               // 00
                                          "Change to override pages",       // 12
                                          "Change to log page",             // 13
                                          "Lock autoscroll of log page",    // 14
-                                         "STATUS"                          // 15
-                                         "val"                             // 16
-                                         "in"                              // 17
-                                         "out"                             // 18
-                                         "disabled channel"                // 19
-                                         "OVERRIDE"                        // 20
-                                         "tube #"                          // 21
-                                         "lamp:"                           // 22
-                                         "ventilator:"                     // 23
-                                         "heater:"                         // 24
+                                         "STATUS",                         // 15
+                                         "val",                            // 16
+                                         "in",                             // 17
+                                         "out",                            // 18
+                                         "disabled channel",               // 19
+                                         "OVERRIDE",                       // 20
+                                         "tube #",                         // 21
+                                         "neutral:",                       // 22
+                                         "on:",                            // 23
+                                         "off:",                           // 24
+                                         "lamp:",                          // 25
+                                         "ventilator:",                    // 26
+                                         "heater:"                         // 27
                                         };
 
 #ifdef ARDUINO_ARCH_MBED_RP2040
@@ -270,7 +274,8 @@ void lcd_backlight(byte opmode) {
 // copy selected virtual status page to LCD
 void copyvirtstatuspage2lcd(byte page) {
   if (page == 0) {
-    /*  +--------------------+
+    /*
+        +--------------------+
         |CH #0         STATUS|
         |val   T:00°C        |
         |in    BE:0 LP:0 HP:0|
@@ -294,7 +299,8 @@ void copyvirtstatuspage2lcd(byte page) {
   } else {
   }
   if (virtstatuspage[page][0] == 255) {
-    /*  +--------------------+
+    /*
+        +--------------------+
         |CH #3         STATUS|
         |                    |
         |  disabled channel  |
@@ -305,7 +311,8 @@ void copyvirtstatuspage2lcd(byte page) {
     lcd.setCursor(lcd_xsize - msg[15].length(), 0); lcd.print(msg[15]);
     lcd.setCursor(lcd_xsize / 2 - msg[19].length() / 2, 2); lcd.print(msg[16]);
   } else {
-    /*  +--------------------+
+    /*
+        +--------------------+
         |CH #1         STATUS|
         |val   T:00°C RH:100%|
         |in    OM:H CM:A BE:0|
@@ -336,32 +343,80 @@ void copyvirtstatuspage2lcd(byte page) {
 void clearvirtstatuspage() {
   for (byte y = 0; y <= 9; y++) {
     for (byte x = 0; x <= 8; x++) {
-      virtstatuspage[x][y] = SPACE;
+      virtstatuspage[x][y] = 0;
     }
   }
 }
 
 // copy selected virtual override page to LCD
 void copyvirtoverridepage2lcd(byte page) {
-  // !!! ne felejts el !!!
+  if (page == 0) {
+    /*
+        +--------------------+
+        |CH #0       OVERRIDE|
+        |tube #1:     neutral|
+        |tube #2:     neutral|
+        |tube #3:     neutral|
+        +--------------------+
+    */
+    lcd.setCursor(0, 0); lcd.print("CH #" + String(page));
+    lcd.setCursor(lcd_xsize - msg[20].length(), 0); lcd.print(msg[20]);
+    for (byte b = 1; b < 4; b++) {
+      lcd.setCursor(0, b); lcd.print(msg[21] + String(b) + ":");
+      lcd.setCursor(lcd_xsize - msg[22].length(), b);
+      switch (virtoverridepage[page][0]) {
+        case 0: lcd.print(msg[22]);
+          break;
+        case 1: lcd.print(msg[23]);
+          break;
+        case 3: lcd.print(msg[24]);
+          break;
+      }
+    }
+  } else {
+    /*
+        +--------------------+
+        |CH #1       OVERRIDE|
+        |lamp:        on     |
+        |ventilator:  neutral|
+        |heater:      off    |
+        +--------------------+
+    */
+    lcd.setCursor(0, 0); lcd.print("CH #" + String(page));
+    lcd.setCursor(lcd_xsize - msg[20].length(), 0); lcd.print(msg[20]);
+    for (byte b = 1; b < 4; b++) {
+      lcd.setCursor(0, b); lcd.print(msg[24 + b] + ":");
+      lcd.setCursor(lcd_xsize - msg[22].length(), b);
+      switch (virtoverridepage[page][0]) {
+        case 0: lcd.print(msg[22]);
+          break;
+        case 1: lcd.print(msg[23]);
+          break;
+        case 3: lcd.print(msg[24]);
+          break;
+      }
+    }
+  }
 }
 
 // clear virtual override pages
 void clearvirtoverridepage() {
   for (byte y = 0; y <= 2; y++) {
     for (byte x = 0; x <= 8; x++) {
-      virtoverridepage[x][y] = SPACE;
+      virtoverridepage[x][y] = 0;
     }
   }
 }
 
 // scroll up one line on virtual screen (log page in Mode #3)
 void scroll(byte lastline) {
-  for (byte y = 1; y <= lastline; y++) {
-    for (byte x = 0; x <= virtscreenxsize - 1; x++) {
-      virtscreen[x][y - 1] = virtscreen[x][y];
-      if (y == lastline) {
-        virtscreen[x][y] = SPACE;
+  if (virtscreenscrolllock == 0 ) {
+    for (byte y = 1; y <= lastline; y++) {
+      for (byte x = 0; x <= virtscreenxsize - 1; x++) {
+        virtscreen[x][y - 1] = virtscreen[x][y];
+        if (y == lastline) {
+          virtscreen[x][y] = SPACE;
+        }
       }
     }
   }
@@ -541,10 +596,10 @@ byte com_handler(byte port) {
           if (operationsubmode < 2) {
             switch (operationsubmode) {
               case 0:
-                // !!! aktuális oldal megjelenítése !!!
+                copyvirtstatuspage2lcd(virtstatuspagenum);
                 break;
               case 1:
-                // !!! aktuális oldal megjelenítése !!!
+                copyvirtoverridepage2lcd(virtoverridepagenum);
                 break;
             }
           }
@@ -693,11 +748,15 @@ void btn_handler(byte m, byte sm) {
       switch (sm) {
         case 0:
           // SubMode #0: change page
-          // !!! előző oldal megjelenítése !!!
+          if (virtstatuspagenum > 0) {
+            virtstatuspagenum--;
+          }
           break;
         case 1:
           // SubMode #1: change page
-          // !!! előző oldal megjelenítése !!!
+          if (virtoverridepagenum > 0) {
+            virtoverridepagenum--;
+          }
           break;
         case 2:
           // SubMode #2: scroll lines
@@ -716,11 +775,15 @@ void btn_handler(byte m, byte sm) {
       switch (sm) {
         case 0:
           // SubMode #0: change page
-          // !!! következő oldal megjelenítése !!!
+          if (virtstatuspagenum < 8) {
+            virtstatuspagenum++;
+          }
           break;
         case 1:
           // SubMode #1: change page
-          // !!! következő oldal megjelenítése !!!
+          if (virtoverridepagenum < 8) {
+            virtoverridepagenum++;
+          }
           break;
         case 2:
           // SubMode #2: scroll lines
@@ -748,13 +811,17 @@ void btn_handler(byte m, byte sm) {
       lcd.clear();
       switch (operationsubmode) {
         case 0:
-          // !!! aktuális oldal megjelenítése !!!
+          copyvirtstatuspage2lcd(virtstatuspagenum);
+          com_writetoconsole(msg[11]);
           break;
         case 1:
-          // !!! aktuális oldal megjelenítése !!!
+          copyvirtoverridepage2lcd(virtoverridepagenum);
+          com_writetoconsole(msg[12]);
           break;
         case 2:
-          // !!! aktuális oldal megjelenítése !!!
+          virtscreenscrolllock = 0;
+          copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
+          com_writetoconsole(msg[13]);
           break;
       }
     }
@@ -767,8 +834,9 @@ void btn_handler(byte m, byte sm) {
       if (operationsubmode == 2) {
         virtscreenscrolllock = not virtscreenscrolllock;
       }
-      lcd.clear();
-      copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
+      if (virtscreenscrolllock == 1) {
+        com_writetoconsole(msg[14]);
+      }
     }
   }
 }
