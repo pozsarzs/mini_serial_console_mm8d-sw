@@ -15,7 +15,8 @@
 */
 
 /*
-  Operation modes:
+  Operation modes
+  ~~~~~~~~~~~~~~~
 
     Mode #0:   read only mode,
                no cursor,
@@ -56,7 +57,8 @@
           virtscreenysize constants in operation mode #1 and #2.
 
 
-  Button functions:
+  Button functions
+  ~~~~~~~~~~~~~~~~
 
     Button  Mode #0     Mode #1     Mode #2     Mode #3/0   Mode #3/1   Mode #3/2
     -------------------------------------------------------------------------------
@@ -67,61 +69,60 @@
      PB4                                        submode     submode     submode
      PB5                                                                lock scroll
 
-  Serial ports:
 
-    Serial0: via USB
-    Serial1: 3.3V TTL  UART0
-    Serial2: RS232C    UART1
+  Serial ports
+  ~~~~~~~~~~~~
 
-  Example incoming lines in Mode #3:
+    Serial0:  via USB port
+    Serial1:  UART0  TTL    0/3.3V
+    Serial2:  UART1  RS232  +/-12V
 
-      1  2 3 4 5  6 7 8 9 a b
-    --------------------------
-    "CH0|0|0|0|31|0|0|0|0|0|0"
 
-    1:   channel
-    2:   overcurrent breaker error             0: closed 1: opened
-    3:   water pump pressure error (no water)  0: good   1: bad
-    4:   water pump pressure error (clogging)  0: good   1: bad
-    5:   external temperature in °C
-    6:   status of water pump and tube #1      0: off    1: on       x: always off !: always on
-    7:   status of water pump and tube #2      0: off    1: on       x: always off !: always on
-    8:   status of water pump and tube #3      0: off    1: on       x: always off !: always on
-    a-b: unused
+  Example incoming (binary) data lines in Mode #3
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-      1  2  3  4  5 6 7 8 9 a b
-    ----------------------------
-    "CH1|11|21|31|0|1|0|0|1|0|1"
+     0123456789ABC
+    "CH..........."
 
-    1:   channel
-    2:   temperature in °C
-    3:   relative humidity
-    4:   relative unwanted gas concentrate
-    5:   operation mode                        0: hyphae  1: mushroom
-    6:   manual mode                           0: auto    1: manual
-    7:   overcurrent breaker error             0: closed  1: opened
-    8:   status of door (alarm)                0: closed  1: opened
-    9:   status of lamp output                 0: off     1: on       x: always off  !: always on
-    a:   status of ventilator output           0: off     1: on       x: always off  !: always on
-    b:   status of heater output               0: off     1: on       x: always off  !: always on
+    0:   'C'                                  0x43
+    1:   'H'                                  0x48
+    2:   number of channel                    0x00-0x08
+    3:   overcurrent breaker error            0x00: closed 0x01: opened
+    4:   water pump pressure error (no water) 0x00: good   0x01: bad
+    5:   water pump pressure error (clogging) 0x00: good   0x01: bad
+    6:   external temperature in °C          (0x00-0x80)
+    7:   status of water pump and tube #1     0x00: off    0x01: on     0x02: always off 0x03: always on
+    8:   status of water pump and tube #2     0x00: off    0x01: on     0x02: always off 0x03: always on
+    9:   status of water pump and tube #3     0x00: off    0x01: on     0x02: always off 0x03: always on
+    A-C: unused                               0x0F
 
-      1  2 3 4 5 6 7 8 9 a b
-    -------------------------
-    "CH8|D|D|D|D|D|D|D|D|D|D"
+    0:   'C'                                  0x43
+    1:   'H'                                  0x48
+    2:   number of channel                    0x00-0x08
+    3:   temperature in °C                   (0x00-0x80)
+    4:   relative humidity                   (0x00-0x80)
+    5:   relative unwanted gas concentrate   (0x00-0x80)
+    6:   operation mode                       0x00: hyphae 0x01: mushr. 0xFF: disabled channel
+    7:   manual mode                          0x00: auto   0x01: manual
+    8:   overcurrent breaker error            0x00: closed 0x01: opened
+    9:   status of door (alarm)               0x00: closed 0x01: opened
+    A:   status of lamp output                0x00: off    0x01: on     0x02: always off 0x03: always on
+    B:   status of ventilator output          0x00: off    0x01: on     0x02: always off 0x03: always on
+    C:   status of heater output              0x00: off    0x01: on     0x02: always off 0x03: always on
 
-    1:   channel
-    2-b: sign of disabled channel
 
-       1      2    3           4
-    ----------------------------------------------------------
+  Example incoming (text) log lines in Mode #3
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+       0      1    2           3
     "221213 114421 I Configuration is loaded."
     "221213 114427 W CH2: MM6D is not accessible."
     "221213 114427 E ERROR #18: There is not enabled channel!"
 
-    1:   date in yymmdd format
-    2:   time in hhmmss format
-    3:   level (information, warning, error)
-    4:   short description
+    0:   date in yymmdd format
+    1:   time in hhmmss format
+    2:   level (information, warning, error)
+    3:   short description
 */
 
 #define LCD_8BIT                                            // enable 8 bit mode of the LCD
@@ -144,7 +145,7 @@
 // settings
 const int     lcd_bloffinterval       = 60000;             // LCD backlight off time after last button press
 const byte    lcd_xsize               = 20;                // horizontal size of display
-const byte    lcd_ysize               = 4;                 //vertical size of display
+const byte    lcd_ysize               = 4;                 // vertical size of display
 const byte    virtscreenxsize         = 80;                // horizontal size of virtual screen
 const byte    virtscreenysize         = 25;                // vertical size of virtual screen
 // serial ports
@@ -181,7 +182,6 @@ const byte    prt_led                 = LED_BUILTIN;       // LED on the board o
 const String  swversion               = "0.1";             // version of this program
 const int     btn_delay               = 200;               // time after read button status
 // general variables
-byte          virtoverridepage[9][3];                       // virtual status pages
 byte          virtoverridepagenum     = 0;                  // page num. for copy data (virtstatuspage->display)
 byte          virtstatuspage[9][10];                        // virtual status pages
 byte          virtstatuspagenum       = 0;                  // page num. for copy data (virtstatuspage->display)
@@ -219,8 +219,8 @@ String msg[28]                        = {"    MM8D console",               // 00
                                          "OVERRIDE",                       // 20
                                          "tube #",                         // 21
                                          "neutral:",                       // 22
-                                         "on:",                            // 23
-                                         "off:",                           // 24
+                                         "off:",                           // 23
+                                         "on:",                            // 24
                                          "lamp:",                          // 25
                                          "ventilator:",                    // 26
                                          "heater:"                         // 27
@@ -292,13 +292,20 @@ void copyvirtstatuspage2lcd(byte page) {
     lcd.print("BE:" + String(virtstatuspage[page][0]) + " " +
               +"LP:" + String(virtstatuspage[page][1]) + " " +
               +"HP:" + String(virtstatuspage[page][2]));
+    char tube[3];
+    for (byte b = 4; b < 7; b++) {
+      if (virtstatuspage[page][b] == 0x02) {
+        tube[b - 4] = '0';
+      }
+      if (virtstatuspage[page][b] == 0x03) {
+        tube[b - 4] = '1';
+      }
+    }
     lcd.setCursor(lcd_xsize - 14, 3);
-    lcd.print("T1:" + String(virtstatuspage[page][4]) + " " +
-              +"T2:" + String(virtstatuspage[page][5]) + " " +
-              +"T3:" + String(virtstatuspage[page][6]));
+    lcd.print("T1:" + String(tube[0]) + " " + "T2:" + String(tube[1]) + " " + "T3:" + String(tube[2]));
   } else {
   }
-  if (virtstatuspage[page][0] == 255) {
+  if (virtstatuspage[page][3] == 0xFF) {
     /*
         +--------------------+
         |CH #3         STATUS|
@@ -319,6 +326,8 @@ void copyvirtstatuspage2lcd(byte page) {
         |out   LA:0 VE:0 HE:0|
         +--------------------+
     */
+
+    // Ez itt átírandó!
     lcd.setCursor(0, 0); lcd.print("CH #" + String(page));
     lcd.setCursor(lcd_xsize - msg[15].length(), 0); lcd.print(msg[15]);
     lcd.setCursor(0, 1); lcd.print(msg[16]);
@@ -329,13 +338,30 @@ void copyvirtstatuspage2lcd(byte page) {
     lcd.print("T:" + String(virtstatuspage[page][0]) + "°C " +
               +" RH:" + String(virtstatuspage[page][1]) + "%");
     lcd.setCursor(lcd_xsize - 14, 2);
-    lcd.print("OM:" + String(virtstatuspage[page][3]) + " " +
-              +"CM:" + String(virtstatuspage[page][4]) + " " +
-              +"BE:" + String(virtstatuspage[page][5]));
+    char OM;
+    char CM;
+    if (virtstatuspage[page][3] == 0x01) {
+      OM = 'M';
+    } else {
+      OM = 'H';
+    }
+    if (virtstatuspage[page][4] == 0x01) {
+      OM = 'M';
+    } else {
+      OM = 'A';
+    }
+    lcd.print("OM:" + String(OM) + " " + "CM:" + String(CM) + " " + "BE:" + String(virtstatuspage[page][5]));
+    char out[3];
+    for (byte b = 7; b < 9; b++) {
+      if (virtstatuspage[page][b] == 0x02) {
+        out[b - 7] = '0';
+      }
+      if (virtstatuspage[page][b] == 0x03) {
+        out[b - 7] = '1';
+      }
+    }
     lcd.setCursor(lcd_xsize - 14, 3);
-    lcd.print("LA:" + String(virtstatuspage[page][7]) + " " +
-              +"VE:" + String(virtstatuspage[page][8]) + " " +
-              +"HE:" + String(virtstatuspage[page][9]));
+    lcd.print("LA:" + String(out[0]) + " " + "VE:" + String(out[1]) + " " + "HE:" + String(out[2]));
   }
 }
 
@@ -364,12 +390,14 @@ void copyvirtoverridepage2lcd(byte page) {
     for (byte b = 1; b < 4; b++) {
       lcd.setCursor(0, b); lcd.print(msg[21] + String(b) + ":");
       lcd.setCursor(lcd_xsize - msg[22].length(), b);
-      switch (virtoverridepage[page][0]) {
-        case 0: lcd.print(msg[22]);
+      switch (virtstatuspage[page][b + 3]) {
+        case 0x00: lcd.print(msg[22]);
           break;
-        case 1: lcd.print(msg[23]);
+        case 0x01: lcd.print(msg[22]);
           break;
-        case 3: lcd.print(msg[24]);
+        case 0x02: lcd.print(msg[23]);
+          break;
+        case 0x03: lcd.print(msg[24]);
           break;
       }
     }
@@ -387,23 +415,16 @@ void copyvirtoverridepage2lcd(byte page) {
     for (byte b = 1; b < 4; b++) {
       lcd.setCursor(0, b); lcd.print(msg[24 + b] + ":");
       lcd.setCursor(lcd_xsize - msg[22].length(), b);
-      switch (virtoverridepage[page][0]) {
-        case 0: lcd.print(msg[22]);
+      switch (virtstatuspage[page][b + 6]) {
+        case 0x00: lcd.print(msg[22]);
           break;
-        case 1: lcd.print(msg[23]);
+        case 0x01: lcd.print(msg[22]);
           break;
-        case 3: lcd.print(msg[24]);
+        case 0x02: lcd.print(msg[23]);
+          break;
+        case 0x03: lcd.print(msg[24]);
           break;
       }
-    }
-  }
-}
-
-// clear virtual override pages
-void clearvirtoverridepage() {
-  for (byte y = 0; y <= 2; y++) {
-    for (byte x = 0; x <= 8; x++) {
-      virtoverridepage[x][y] = 0;
     }
   }
 }
@@ -589,10 +610,25 @@ byte com_handler(byte port) {
         break;
       case 3:
         // in Mode #3
-        if ((rxdbuffer[0] == 0x43) and (rxdbuffer[1] == 0x48))
+        if ((rxdbuffer[0] == 0x43) and (rxdbuffer[1] == 0x48)) // "CH"
         {
           // if the received line is data
-          // !!! tárolás !!!
+          if (rxdbuffer[6] == 0xFF) {
+            // channel #0
+            for (byte b = 3; b < 13; b++) {
+              if (b > 6) {
+                virtstatuspage[rxdbuffer[2]][b - 3] = 0;
+              } else {
+                virtstatuspage[rxdbuffer[2]][b - 3] = rxdbuffer[b];
+              }
+            }
+          } else
+          {
+            // channel #1-8
+            for (byte b = 3; b < 13; b++) {
+              virtstatuspage[rxdbuffer[2]][b - 3] = rxdbuffer[b];
+            }
+          }
           if (operationsubmode < 2) {
             switch (operationsubmode) {
               case 0:
