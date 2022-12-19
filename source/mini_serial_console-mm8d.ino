@@ -94,7 +94,7 @@
     7:   status of water pump and tube #1     0x00: off    0x01: on     0x02: always off 0x03: always on
     8:   status of water pump and tube #2     0x00: off    0x01: on     0x02: always off 0x03: always on
     9:   status of water pump and tube #3     0x00: off    0x01: on     0x02: always off 0x03: always on
-    A-C: unused                               0x0F
+    A-C: unused                               0x00
 
     0:   'C'                                  0x43
     1:   'H'                                  0x48
