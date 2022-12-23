@@ -86,7 +86,7 @@
 
     0:   'C'                                  0x43
     1:   'H'                                  0x48
-    2:   number of channel                    0x00-0x08
+    2:   number of channel                    0x00
     3:   overcurrent breaker error            0x00: closed 0x01: opened
     4:   water pump pressure error (no water) 0x00: good   0x01: bad
     5:   water pump pressure error (clogging) 0x00: good   0x01: bad
@@ -94,11 +94,11 @@
     7:   status of water pump and tube #1     0x00: off    0x01: on     0x02: always off 0x03: always on
     8:   status of water pump and tube #2     0x00: off    0x01: on     0x02: always off 0x03: always on
     9:   status of water pump and tube #3     0x00: off    0x01: on     0x02: always off 0x03: always on
-    A-C: unused                               0x00
+    A-C: unused                               0x0F
 
     0:   'C'                                  0x43
     1:   'H'                                  0x48
-    2:   number of channel                    0x00-0x08
+    2:   number of channel                    0x01-0x08
     3:   temperature in °C                   (0x00-0x80)
     4:   relative humidity                   (0x00-0x80)
     5:   relative unwanted gas concentrate   (0x00-0x80)
@@ -143,44 +143,44 @@
 #include <LiquidCrystal.h>
 
 // settings
-const int     lcd_bloffinterval       = 60000;             // LCD backlight off time after last button press
-const byte    lcd_xsize               = 20;                // horizontal size of display
-const byte    lcd_ysize               = 4;                 // vertical size of display
-const byte    virtscreenxsize         = 80;                // horizontal size of virtual screen
-const byte    virtscreenysize         = 25;                // vertical size of virtual screen
+const int     lcd_bloffinterval       = 60000;              // LCD backlight off time after last button press
+const byte    lcd_xsize               = 20;                 // horizontal size of display
+const byte    lcd_ysize               = 4;                  // vertical size of display
+const byte    virtscreenxsize         = 80;                 // horizontal size of virtual screen
+const byte    virtscreenysize         = 25;                 // vertical size of virtual screen
 // serial ports
 const int     com_speed[3]            = {115200,
                                          9600,
                                          9600
-                                        };                 // speed of the USB serial port
+                                        };                  // speed of the USB serial port
 #ifdef ARDUINO_ARCH_MBED_RP2040
 const byte    com_rxd2                = 8;
 const byte    com_txd2                = 9;
 #endif
 // GPIO ports
-const byte    lcd_bl                  = 14;                // LCD - backlight on/off
-const byte    lcd_db0                 = 2;                 // LCD - databit 0
-const byte    lcd_db1                 = 3;                 // LCD - databit 1
-const byte    lcd_db2                 = 4;                 // LCD - databit 2
-const byte    lcd_db3                 = 5;                 // LCD - databit 3
-const byte    lcd_db4                 = 10;                // LCD - databit 4
-const byte    lcd_db5                 = 11;                // LCD - databit 5
-const byte    lcd_db6                 = 12;                // LCD - databit 6
-const byte    lcd_db7                 = 13;                // LCD - databit 7
-const byte    lcd_en                  = 7;                 // LCD - enable
-const byte    lcd_rs                  = 6;                 // LCD - register select
-const byte    prt_jp2                 = 16;                // operation mode (JP2 jumper)
-const byte    prt_jp3                 = 15;                // operation mode (JP3 jumper)
-const byte    prt_pb0                 = 17;                // pushbutton 0
-const byte    prt_pb1                 = 18;                // pushbutton 1
-const byte    prt_pb2                 = 19;                // pushbutton 2
-const byte    prt_pb3                 = 20;                // pushbutton 3
-const byte    prt_pb4                 = 21;                // pushbutton 4
-const byte    prt_pb5                 = 22;                // pushbutton 5
-const byte    prt_led                 = LED_BUILTIN;       // LED on the board of Pico
+const byte    lcd_bl                  = 14;                 // LCD - backlight on/off
+const byte    lcd_db0                 = 2;                  // LCD - databit 0
+const byte    lcd_db1                 = 3;                  // LCD - databit 1
+const byte    lcd_db2                 = 4;                  // LCD - databit 2
+const byte    lcd_db3                 = 5;                  // LCD - databit 3
+const byte    lcd_db4                 = 10;                 // LCD - databit 4
+const byte    lcd_db5                 = 11;                 // LCD - databit 5
+const byte    lcd_db6                 = 12;                 // LCD - databit 6
+const byte    lcd_db7                 = 13;                 // LCD - databit 7
+const byte    lcd_en                  = 7;                  // LCD - enable
+const byte    lcd_rs                  = 6;                  // LCD - register select
+const byte    prt_jp2                 = 16;                 // operation mode (JP2 jumper)
+const byte    prt_jp3                 = 15;                 // operation mode (JP3 jumper)
+const byte    prt_pb0                 = 17;                 // pushbutton 0
+const byte    prt_pb1                 = 18;                 // pushbutton 1
+const byte    prt_pb2                 = 19;                 // pushbutton 2
+const byte    prt_pb3                 = 20;                 // pushbutton 3
+const byte    prt_pb4                 = 21;                 // pushbutton 4
+const byte    prt_pb5                 = 22;                 // pushbutton 5
+const byte    prt_led                 = LED_BUILTIN;        // LED on the board of Pico
 // general constants
-const String  swversion               = "0.1";             // version of this program
-const int     btn_delay               = 200;               // time after read button status
+const String  swversion               = "0.1";              // version of this program
+const int     btn_delay               = 200;                // time after read button status
 // general variables
 byte          virtoverridepagenum     = 0;                  // page num. for copy data (virtstatuspage->display)
 byte          virtstatuspage[9][10];                        // virtual status pages
@@ -218,12 +218,12 @@ String msg[28]                        = {"    MM8D console",               // 00
                                          "disabled channel",               // 19
                                          "OVERRIDE",                       // 20
                                          "tube #",                         // 21
-                                         "neutral:",                       // 22
-                                         "off:",                           // 23
-                                         "on:",                            // 24
-                                         "lamp:",                          // 25
+                                         "neutral",                        // 22
+                                         "    off",                        // 23
+                                         "     on",                        // 24
+                                         "lamp:      ",                    // 25
                                          "ventilator:",                    // 26
-                                         "heater:"                         // 27
+                                         "heater:    "                     // 27
                                         };
 
 #ifdef ARDUINO_ARCH_MBED_RP2040
@@ -282,86 +282,91 @@ void copyvirtstatuspage2lcd(byte page) {
         |out   T1:0 T2:0 T3:0|
         +--------------------+
     */
+    lcd.clear();
     lcd.setCursor(0, 0); lcd.print("CH #" + String(page));
     lcd.setCursor(lcd_xsize - msg[15].length(), 0); lcd.print(msg[15]);
     lcd.setCursor(0, 1); lcd.print(msg[16]);
     lcd.setCursor(0, 2); lcd.print(msg[17]);
     lcd.setCursor(0, 3); lcd.print(msg[18]);
-    lcd.setCursor(lcd_xsize - 14, 1); lcd.print("T:" + String(virtstatuspage[page][3]) + "°C");
+    lcd.setCursor(lcd_xsize - 14, 1);
+    lcd.print("T:" + String(virtstatuspage[page][3]) + char(0xDF) + "C");
     lcd.setCursor(lcd_xsize - 14, 2);
     lcd.print("BE:" + String(virtstatuspage[page][0]) + " " +
               +"LP:" + String(virtstatuspage[page][1]) + " " +
               +"HP:" + String(virtstatuspage[page][2]));
-    char tube[3];
+    byte tube[3];
     for (byte b = 4; b < 7; b++) {
+      tube[b - 4] = virtstatuspage[page][b];
       if (virtstatuspage[page][b] == 0x02) {
-        tube[b - 4] = '0';
+        tube[b - 4] = 0x00;
       }
       if (virtstatuspage[page][b] == 0x03) {
-        tube[b - 4] = '1';
+        tube[b - 4] = 0x01;
       }
     }
     lcd.setCursor(lcd_xsize - 14, 3);
     lcd.print("T1:" + String(tube[0]) + " " + "T2:" + String(tube[1]) + " " + "T3:" + String(tube[2]));
   } else {
-  }
-  if (virtstatuspage[page][3] == 0xFF) {
-    /*
-        +--------------------+
-        |CH #3         STATUS|
-        |                    |
-        |  disabled channel  |
-        |                    |
-        +--------------------+
-    */
-    lcd.setCursor(0, 0); lcd.print("CH #" + String(page));
-    lcd.setCursor(lcd_xsize - msg[15].length(), 0); lcd.print(msg[15]);
-    lcd.setCursor(lcd_xsize / 2 - msg[19].length() / 2, 2); lcd.print(msg[16]);
-  } else {
-    /*
-        +--------------------+
-        |CH #1         STATUS|
-        |val   T:00°C RH:100%|
-        |in    OM:H CM:A BE:0|
-        |out   LA:0 VE:0 HE:0|
-        +--------------------+
-    */
 
-    // Ez itt átírandó!
-    lcd.setCursor(0, 0); lcd.print("CH #" + String(page));
-    lcd.setCursor(lcd_xsize - msg[15].length(), 0); lcd.print(msg[15]);
-    lcd.setCursor(0, 1); lcd.print(msg[16]);
-    lcd.setCursor(0, 2); lcd.print(msg[17]);
-    lcd.setCursor(0, 3); lcd.print(msg[18]);
+    if (virtstatuspage[page][3] == 0xFF) {
+      /*
+          +--------------------+
+          |CH #3         STATUS|
+          |                    |
+          |  disabled channel  |
+          |                    |
+          +--------------------+
+      */
+      lcd.setCursor(0, 0); lcd.print("CH #" + String(page));
+      lcd.setCursor(lcd_xsize - msg[15].length(), 0); lcd.print(msg[15]);
+      lcd.setCursor(lcd_xsize / 2 - msg[19].length() / 2, 2); lcd.print(msg[16]);
+    } else {
+      /*
+          +--------------------+
+          |CH #1         STATUS|
+          |val   T:00°C RH:100%|
+          |in    OM:H CM:A BE:0|
+          |out   LA:0 VE:0 HE:0|
+          +--------------------+
+      */
+      lcd.clear();
 
-    lcd.setCursor(lcd_xsize - 14, 1);
-    lcd.print("T:" + String(virtstatuspage[page][0]) + "°C " +
-              +" RH:" + String(virtstatuspage[page][1]) + "%");
-    lcd.setCursor(lcd_xsize - 14, 2);
-    char OM;
-    char CM;
-    if (virtstatuspage[page][3] == 0x01) {
-      OM = 'M';
-    } else {
-      OM = 'H';
-    }
-    if (virtstatuspage[page][4] == 0x01) {
-      OM = 'M';
-    } else {
-      OM = 'A';
-    }
-    lcd.print("OM:" + String(OM) + " " + "CM:" + String(CM) + " " + "BE:" + String(virtstatuspage[page][5]));
-    char out[3];
-    for (byte b = 7; b < 9; b++) {
-      if (virtstatuspage[page][b] == 0x02) {
-        out[b - 7] = '0';
+      // Ez itt átírandó!
+      lcd.setCursor(0, 0); lcd.print("CH #" + String(page));
+      lcd.setCursor(lcd_xsize - msg[15].length(), 0); lcd.print(msg[15]);
+      lcd.setCursor(0, 1); lcd.print(msg[16]);
+      lcd.setCursor(0, 2); lcd.print(msg[17]);
+      lcd.setCursor(0, 3); lcd.print(msg[18]);
+
+      lcd.setCursor(lcd_xsize - 14, 1);
+      lcd.print("T:" + String(virtstatuspage[page][0]) + "°C " +
+                +" RH:" + String(virtstatuspage[page][1]) + "%");
+      lcd.setCursor(lcd_xsize - 14, 2);
+      char OM;
+      char CM;
+      if (virtstatuspage[page][3] == 0x01) {
+        OM = 'M';
+      } else {
+        OM = 'H';
       }
-      if (virtstatuspage[page][b] == 0x03) {
-        out[b - 7] = '1';
+      if (virtstatuspage[page][4] == 0x01) {
+        OM = 'M';
+      } else {
+        OM = 'A';
       }
+      lcd.print("OM:" + String(OM) + " " + "CM:" + String(CM) + " " + "BE:" + String(virtstatuspage[page][5]));
+      char out[3];
+      for (byte b = 7; b < 9; b++) {
+        if (virtstatuspage[page][b] == 0x02) {
+          out[b - 7] = '0';
+        }
+        if (virtstatuspage[page][b] == 0x03) {
+          out[b - 7] = '1';
+        }
+      }
+      lcd.setCursor(lcd_xsize - 14, 3);
+      lcd.print("LA:" + String(out[0]) + " " + "VE:" + String(out[1]) + " " + "HE:" + String(out[2]));
     }
-    lcd.setCursor(lcd_xsize - 14, 3);
-    lcd.print("LA:" + String(out[0]) + " " + "VE:" + String(out[1]) + " " + "HE:" + String(out[2]));
   }
 }
 
@@ -385,6 +390,7 @@ void copyvirtoverridepage2lcd(byte page) {
         |tube #3:     neutral|
         +--------------------+
     */
+    lcd.clear();
     lcd.setCursor(0, 0); lcd.print("CH #" + String(page));
     lcd.setCursor(lcd_xsize - msg[20].length(), 0); lcd.print(msg[20]);
     for (byte b = 1; b < 4; b++) {
@@ -405,15 +411,16 @@ void copyvirtoverridepage2lcd(byte page) {
     /*
         +--------------------+
         |CH #1       OVERRIDE|
-        |lamp:        on     |
+        |lamp:             on|
         |ventilator:  neutral|
-        |heater:      off    |
+        |heater:          off|
         +--------------------+
     */
+    lcd.clear();
     lcd.setCursor(0, 0); lcd.print("CH #" + String(page));
     lcd.setCursor(lcd_xsize - msg[20].length(), 0); lcd.print(msg[20]);
     for (byte b = 1; b < 4; b++) {
-      lcd.setCursor(0, b); lcd.print(msg[24 + b] + ":");
+      lcd.setCursor(0, b); lcd.print(msg[24 + b]);
       lcd.setCursor(lcd_xsize - msg[22].length(), b);
       switch (virtstatuspage[page][b + 6]) {
         case 0x00: lcd.print(msg[22]);
@@ -669,7 +676,7 @@ byte com_handler(byte port) {
             }
           }
           virtscreenline++;
-          if (operationsubmode == 1) {
+          if (operationsubmode == 2) {
             copyvirtscreen2lcd(virtscreenxpos, virtscreenypos);
           }
         }
@@ -786,12 +793,14 @@ void btn_handler(byte m, byte sm) {
           // SubMode #0: change page
           if (virtstatuspagenum > 0) {
             virtstatuspagenum--;
+            copyvirtstatuspage2lcd(virtstatuspagenum);
           }
           break;
         case 1:
           // SubMode #1: change page
           if (virtoverridepagenum > 0) {
             virtoverridepagenum--;
+            copyvirtoverridepage2lcd(virtoverridepagenum);
           }
           break;
         case 2:
@@ -813,12 +822,14 @@ void btn_handler(byte m, byte sm) {
           // SubMode #0: change page
           if (virtstatuspagenum < 8) {
             virtstatuspagenum++;
+            copyvirtstatuspage2lcd(virtstatuspagenum);
           }
           break;
         case 1:
           // SubMode #1: change page
           if (virtoverridepagenum < 8) {
             virtoverridepagenum++;
+            copyvirtoverridepage2lcd(virtoverridepagenum);
           }
           break;
         case 2:
@@ -839,7 +850,7 @@ void btn_handler(byte m, byte sm) {
       delay(btn_delay);
       lcd_backlight(2);
       // change SubMode and view actual page
-      if (operationsubmode < 3) {
+      if (operationsubmode < 2) {
         operationsubmode++;
       } else {
         operationsubmode = 0;
@@ -944,7 +955,7 @@ void setup() {
   Serial1.begin(com_speed[1]);
   Serial2.begin(com_speed[2]);
   for (int b = 0; b <= 2; b++) {
-    s = "#" + String(b) + ": " + String(com_speed[b]) + " b/s";
+    s = "#" + String(b) + ": " + String(com_speed[b]) + " baud";
     com_writetoconsole("   " + s);
     lcd.setCursor(0, b); lcd.print(s);
   }
@@ -985,7 +996,6 @@ void setup() {
 void loop() {
   String s;
   // auto LCD backlight off
-  lcd_backlight(2);
   lcd_backlight(3);
   // get operation mode
   if (getmode() != operationmode) {
