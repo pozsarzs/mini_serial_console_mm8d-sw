@@ -126,7 +126,7 @@
 */
 
 #define LCD_8BIT                                            // enable 8 bit mode of the LCD
-#define COM_USB                                          // enable Serial #0 port
+// #define COM_USB                                          // enable Serial #0 port
 #define COM_TTL                                             // enable Serial #1 port
 #define COM_RS232C                                          // enable Serial #2 port
 // #define COM_USB_MESSAGES                                 // enable console messages on Serial #0 port
