@@ -292,7 +292,7 @@ void copyvirtstatuspage2lcd(byte page) {
   if (page == 0) {
     /*
         +--------------------+
-        |CH #0         STATUS|
+        |CH #0  [  ]   STATUS|
         |val   T:00°C        |
         |in    BE:0 LP:0 HP:0|
         |out   T1:0 T2:0 T3:0|
@@ -328,7 +328,7 @@ void copyvirtstatuspage2lcd(byte page) {
     if (virtstatuspage[page][3] == 0x7F) {
       /*
           +--------------------+
-          |CH #3         STATUS|
+          |CH #3  [  ]   STATUS|
           |                    |
           |  disabled channel  |
           |                    |
@@ -346,7 +346,7 @@ void copyvirtstatuspage2lcd(byte page) {
     } else {
       /*
           +--------------------+
-          |CH #1         STATUS|
+          |CH #1  [  ]   STATUS|
           |val   T:00°C RH:100%|
           |in    OM:H CM:A BE:0|
           |out   LA:0 VE:0 HE:0|
@@ -421,7 +421,7 @@ void copyvirtoverridepage2lcd(byte page) {
   if (page == 0) {
     /*
         +--------------------+
-        |CH #0       OVERRIDE|
+        |CH #0  [  ] OVERRIDE|
         |tube #1:     neutral|
         |tube #2:     neutral|
         |tube #3:     neutral|
