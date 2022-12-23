@@ -94,7 +94,7 @@
     7:   status of water pump and tube #1     0x00: off    0x01: on     0x02: always off 0x03: always on
     8:   status of water pump and tube #2     0x00: off    0x01: on     0x02: always off 0x03: always on
     9:   status of water pump and tube #3     0x00: off    0x01: on     0x02: always off 0x03: always on
-    A-C: unused                               0x0F
+    A-C: unused                               0x00
 
     0:   'C'                                  0x43
     1:   'H'                                  0x48
@@ -102,7 +102,7 @@
     3:   temperature in °C                   (0x00-0x80)
     4:   relative humidity                   (0x00-0x80)
     5:   relative unwanted gas concentrate   (0x00-0x80)
-    6:   operation mode                       0x00: hyphae 0x01: mushr. 0xFF: disabled channel
+    6:   operation mode                       0x00: hyphae 0x01: mushr. 0x7F: disabled channel
     7:   manual mode                          0x00: auto   0x01: manual
     8:   overcurrent breaker error            0x00: closed 0x01: opened
     9:   status of door (alarm)               0x00: closed 0x01: opened
@@ -126,7 +126,7 @@
 */
 
 #define LCD_8BIT                                            // enable 8 bit mode of the LCD
-// #define COM_USB                                          // enable Serial #0 port
+#define COM_USB                                          // enable Serial #0 port
 #define COM_TTL                                             // enable Serial #1 port
 #define COM_RS232C                                          // enable Serial #2 port
 // #define COM_USB_MESSAGES                                 // enable console messages on Serial #0 port
@@ -178,6 +178,22 @@ const byte    prt_pb3                 = 20;                 // pushbutton 3
 const byte    prt_pb4                 = 21;                 // pushbutton 4
 const byte    prt_pb5                 = 22;                 // pushbutton 5
 const byte    prt_led                 = LED_BUILTIN;        // LED on the board of Pico
+byte          uparrow[8]              = {B00100,            // up arrow character for LCD
+                                         B01110,
+                                         B10101,
+                                         B00100,
+                                         B00100,
+                                         B00100,
+                                         B00100
+                                        };
+byte          downarrow[8]            = {B00100,            // down arrow character for LCD
+                                         B00100,
+                                         B00100,
+                                         B00100,
+                                         B10101,
+                                         B01110,
+                                         B00100
+                                        };
 // general constants
 const String  swversion               = "0.1";              // version of this program
 const int     btn_delay               = 200;                // time after read button status
@@ -284,6 +300,8 @@ void copyvirtstatuspage2lcd(byte page) {
     */
     lcd.clear();
     lcd.setCursor(0, 0); lcd.print("CH #" + String(page));
+    lcd.setCursor(7, 0); lcd.print("[  ]");
+    lcd.setCursor(8, 0); lcd.write(byte(0));
     lcd.setCursor(lcd_xsize - msg[15].length(), 0); lcd.print(msg[15]);
     lcd.setCursor(0, 1); lcd.print(msg[16]);
     lcd.setCursor(0, 2); lcd.print(msg[17]);
@@ -297,18 +315,17 @@ void copyvirtstatuspage2lcd(byte page) {
     byte tube[3];
     for (byte b = 4; b < 7; b++) {
       tube[b - 4] = virtstatuspage[page][b];
-      if (virtstatuspage[page][b] == 0x02) {
-        tube[b - 4] = 0x00;
-      }
-      if (virtstatuspage[page][b] == 0x03) {
-        tube[b - 4] = 0x01;
+      switch (virtstatuspage[page][b]) {
+        case 0x02: tube[b - 4] = 0x00;
+          break;
+        case 0x03: tube[b - 4] = 0x01;
+          break;
       }
     }
     lcd.setCursor(lcd_xsize - 14, 3);
     lcd.print("T1:" + String(tube[0]) + " " + "T2:" + String(tube[1]) + " " + "T3:" + String(tube[2]));
   } else {
-
-    if (virtstatuspage[page][3] == 0xFF) {
+    if (virtstatuspage[page][3] == 0x7F) {
       /*
           +--------------------+
           |CH #3         STATUS|
@@ -317,9 +334,15 @@ void copyvirtstatuspage2lcd(byte page) {
           |                    |
           +--------------------+
       */
+      lcd.clear();
       lcd.setCursor(0, 0); lcd.print("CH #" + String(page));
+      lcd.setCursor(7, 0); lcd.print("[  ]");
+      if (page < 8) {
+        lcd.setCursor(8, 0); lcd.write(byte(0));
+      }
+      lcd.setCursor(9, 0); lcd.write(byte(1));
       lcd.setCursor(lcd_xsize - msg[15].length(), 0); lcd.print(msg[15]);
-      lcd.setCursor(lcd_xsize / 2 - msg[19].length() / 2, 2); lcd.print(msg[16]);
+      lcd.setCursor(lcd_xsize / 2 - msg[19].length() / 2, 2); lcd.print(msg[19]);
     } else {
       /*
           +--------------------+
@@ -330,38 +353,52 @@ void copyvirtstatuspage2lcd(byte page) {
           +--------------------+
       */
       lcd.clear();
-
-      // Ez itt átírandó!
       lcd.setCursor(0, 0); lcd.print("CH #" + String(page));
+      lcd.setCursor(7, 0); lcd.print("[  ]");
+      if (page < 8) {
+        lcd.setCursor(8, 0); lcd.write(byte(0));
+      }
+      lcd.setCursor(9, 0); lcd.write(byte(1));
       lcd.setCursor(lcd_xsize - msg[15].length(), 0); lcd.print(msg[15]);
       lcd.setCursor(0, 1); lcd.print(msg[16]);
       lcd.setCursor(0, 2); lcd.print(msg[17]);
       lcd.setCursor(0, 3); lcd.print(msg[18]);
-
       lcd.setCursor(lcd_xsize - 14, 1);
-      lcd.print("T:" + String(virtstatuspage[page][0]) + "°C " +
-                +" RH:" + String(virtstatuspage[page][1]) + "%");
+      lcd.print("T:" + String(virtstatuspage[page][0]) + char(0xDF) + "C " +
+                +"RH:" + String(virtstatuspage[page][1]) + "%");
       lcd.setCursor(lcd_xsize - 14, 2);
-      char OM;
-      char CM;
-      if (virtstatuspage[page][3] == 0x01) {
-        OM = 'M';
-      } else {
-        OM = 'H';
+      String OM;
+      String CM;
+      OM = "?";
+      CM = "?";
+      switch (virtstatuspage[page][3]) {
+        case 0x00:
+          OM = 'H';
+          break;
+        case 0x01:
+          OM = 'M';
+          break;
+        case 0x7F:
+          OM = 'D';
+          break;
       }
-      if (virtstatuspage[page][4] == 0x01) {
-        OM = 'M';
-      } else {
-        OM = 'A';
+      switch (virtstatuspage[page][4]) {
+        case 0x00:
+          CM = 'A';
+          break;
+        case 0x01:
+          CM = 'M';
+          break;
       }
-      lcd.print("OM:" + String(OM) + " " + "CM:" + String(CM) + " " + "BE:" + String(virtstatuspage[page][5]));
-      char out[3];
-      for (byte b = 7; b < 9; b++) {
-        if (virtstatuspage[page][b] == 0x02) {
-          out[b - 7] = '0';
-        }
-        if (virtstatuspage[page][b] == 0x03) {
-          out[b - 7] = '1';
+      lcd.print("OM:" + OM + " " + "CM:" + CM + " " + "BE:" + String(virtstatuspage[page][5]));
+      byte out[3];
+      for (byte b = 7; b < 10; b++) {
+        out[b - 7] = virtstatuspage[page][b];
+        switch (virtstatuspage[page][b]) {
+          case 0x02: out[b - 7] = 0x00;
+            break;
+          case 0x03: out[b - 7] = 0x01;
+            break;
         }
       }
       lcd.setCursor(lcd_xsize - 14, 3);
@@ -392,6 +429,8 @@ void copyvirtoverridepage2lcd(byte page) {
     */
     lcd.clear();
     lcd.setCursor(0, 0); lcd.print("CH #" + String(page));
+    lcd.setCursor(7, 0); lcd.print("[  ]");
+    lcd.setCursor(8, 0); lcd.write(byte(0));
     lcd.setCursor(lcd_xsize - msg[20].length(), 0); lcd.print(msg[20]);
     for (byte b = 1; b < 4; b++) {
       lcd.setCursor(0, b); lcd.print(msg[21] + String(b) + ":");
@@ -418,6 +457,11 @@ void copyvirtoverridepage2lcd(byte page) {
     */
     lcd.clear();
     lcd.setCursor(0, 0); lcd.print("CH #" + String(page));
+    lcd.setCursor(7, 0); lcd.print("[  ]");
+    if (page < 8) {
+      lcd.setCursor(8, 0); lcd.write(byte(0));
+    }
+    lcd.setCursor(9, 0); lcd.write(byte(1));
     lcd.setCursor(lcd_xsize - msg[20].length(), 0); lcd.print(msg[20]);
     for (byte b = 1; b < 4; b++) {
       lcd.setCursor(0, b); lcd.print(msg[24 + b]);
@@ -619,22 +663,8 @@ byte com_handler(byte port) {
         // in Mode #3
         if ((rxdbuffer[0] == 0x43) and (rxdbuffer[1] == 0x48)) // "CH"
         {
-          // if the received line is data
-          if (rxdbuffer[6] == 0xFF) {
-            // channel #0
-            for (byte b = 3; b < 13; b++) {
-              if (b > 6) {
-                virtstatuspage[rxdbuffer[2]][b - 3] = 0;
-              } else {
-                virtstatuspage[rxdbuffer[2]][b - 3] = rxdbuffer[b];
-              }
-            }
-          } else
-          {
-            // channel #1-8
-            for (byte b = 3; b < 13; b++) {
-              virtstatuspage[rxdbuffer[2]][b - 3] = rxdbuffer[b];
-            }
+          for (byte b = 3; b < 13; b++) {
+            virtstatuspage[rxdbuffer[2]][b - 3] = rxdbuffer[b];
           }
           if (operationsubmode < 2) {
             switch (operationsubmode) {
@@ -936,6 +966,8 @@ void setup() {
   pinMode(prt_pb5, INPUT);
   // display
   com_writetoconsole(msg[6]);
+  lcd.createChar(0, uparrow);
+  lcd.createChar(1, downarrow);
   lcd.begin(lcd_xsize, lcd_ysize);
   lcd_backlight(1);
   lcd_backlight(2);
