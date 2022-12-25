@@ -1,7 +1,7 @@
-**Mini serial console with 20x4 LCD, six buttons and three different ports**  
+**Mini serial console for MM8D**  
 Copyright (C) 2022 Pozsár Zsolt <pozsarzs@gmail.com>  
 Homepage: <http://www.pozsarzs.hu>  
-GitHub: <https://github.com/pozsarzs/mini_serial_console-sw>
+GitHub: <https://github.com/pozsarzs/mini_serial_console_mm8d-sw>
 
 **Software**
 
