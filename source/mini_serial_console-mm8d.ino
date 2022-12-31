@@ -49,8 +49,8 @@
                automatically scrolling lines,
                the displayed area can be moved horizontally and vertically with
                pushbuttons,
-               switch to other submode with PB4 button.
-               lock scroll with PB5 button
+               switch to other submode with PB4 button,
+               lock scroll with PB5 button.
 
     Note:
      '*': You can set size of the virtual screen with virtscreenxsize and
@@ -65,7 +65,7 @@
      PB0    move left   move left   move left                           move left
      PB1    move right  move right  move right                          move right
      PB2                move up     move up     page up     page up     scroll up
-     PB3                move down   move down   page down   pahe down   scroll down
+     PB3                move down   move down   page down   page down   scroll down
      PB4                                        submode     submode     submode
      PB5                                                                lock scroll
 
@@ -126,10 +126,10 @@
 */
 
 #define LCD_8BIT                                            // enable 8 bit mode of the LCD
-// #define COM_USB                                          // enable Serial #0 port
+#define COM_USB                                             // enable Serial #0 port
 #define COM_TTL                                             // enable Serial #1 port
 #define COM_RS232C                                          // enable Serial #2 port
-// #define COM_USB_MESSAGES                                 // enable console messages on Serial #0 port
+#define COM_USB_MESSAGES                                    // enable console messages on Serial #0 port
 // #define COM_TTL_MESSAGES                                 // enable console messages on Serial #1 port
 // #define COM_RS232C_MESSAGES                              // enable console messages on Serial #2 port
 // #define TEST                                             // enable test mode of scrolling
@@ -243,7 +243,7 @@ String msg[28]                        = {"    MM8D console",               // 00
                                         };
 
 #ifdef ARDUINO_ARCH_MBED_RP2040
-UART Serial2(com_rxd2, com_txd, NC, NC);
+UART Serial2(com_rxd2, com_txd2, NC, NC);
 #endif
 
 #ifdef LCD_8BIT
@@ -928,8 +928,8 @@ byte getmode() {
 // initializing
 void setup() {
   String s;
-  // set USB serial port
   delay(3000);
+  // serial ports
   Serial.begin(com_speed[0]);
   Serial1.begin(com_speed[1]);
   Serial2.begin(com_speed[2]);
@@ -982,10 +982,7 @@ void setup() {
   }
   delay(3000);
   lcd.clear();
-  // serial ports
   com_writetoconsole(msg[7]);
-  Serial1.begin(com_speed[1]);
-  Serial2.begin(com_speed[2]);
   for (int b = 0; b <= 2; b++) {
     s = "#" + String(b) + ": " + String(com_speed[b]) + " baud";
     com_writetoconsole("   " + s);
